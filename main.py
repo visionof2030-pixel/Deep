@@ -218,7 +218,7 @@ async def verify_code(req: ActivationCheckReq, request: Request):
         conn.close()
 
 @app.post("/ask")
-async def ask(req: Req, _: None = Depends(activation_required), request: Request):
+async def ask(request: Request, req: Req, _: None = Depends(activation_required)):
     """AI问答端点"""
     try:
         # 安全检查：验证请求频率
