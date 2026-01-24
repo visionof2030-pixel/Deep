@@ -134,24 +134,18 @@ async def verify_code(req: ActivationCheckReq, request: Request):
             content={"valid": False, "message": e.detail}
         )
     
-    # Code validation
-    code = req.code.strip().upper()
+    # Code validation - قم بتحديث هذا الجزء
+    code = req.code.strip().lower()  # تغيير إلى lower للأحرف الصغيرة
     
-    # Basic validation
-    if len(code) != 20:
-        record_failed_attempt(ip_address)
-        return JSONResponse(
-            status_code=400,
-            content={"valid": False, "message": "Invalid code length"}
-        )
-    
-    # Check code pattern
+    # التحقق من نمط UUID (طول 36 حرف مع شُرط)
     import re
-    if not re.match(r'^[A-Z0-9]{20}$', code):
+    uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    
+    if not re.match(uuid_pattern, code):
         record_failed_attempt(ip_address)
         return JSONResponse(
             status_code=400,
-            content={"valid": False, "message": "Invalid code format"}
+            content={"valid": False, "message": "تنسيق كود التفعيل غير صحيح. يجب أن يكون بصيغة UUID"}
         )
     
     # Check in database
@@ -168,7 +162,7 @@ async def verify_code(req: ActivationCheckReq, request: Request):
             record_failed_attempt(ip_address)
             return JSONResponse(
                 status_code=404,
-                content={"valid": False, "message": "Code not found"}
+                content={"valid": False, "message": "كود التفعيل غير موجود"}
             )
         
         code_id, is_active, usage_count, expires_at = row
@@ -178,7 +172,7 @@ async def verify_code(req: ActivationCheckReq, request: Request):
             record_failed_attempt(ip_address)
             return JSONResponse(
                 status_code=403,
-                content={"valid": False, "message": "Code is inactive"}
+                content={"valid": False, "message": "كود التفعيل غير مفعل"}
             )
         
         # Check expiration
@@ -188,7 +182,7 @@ async def verify_code(req: ActivationCheckReq, request: Request):
                 record_failed_attempt(ip_address)
                 return JSONResponse(
                     status_code=403,
-                    content={"valid": False, "message": "Code has expired"}
+                    content={"valid": False, "message": "كود التفعيل منتهي الصلاحية"}
                 )
         
         # Increment usage count
@@ -204,7 +198,7 @@ async def verify_code(req: ActivationCheckReq, request: Request):
         
         return JSONResponse({
             "valid": True,
-            "message": "Code verified successfully",
+            "message": "تم التحقق من كود التفعيل بنجاح",
             "usage_count": usage_count + 1,
             "expires_at": expires_at
         })
@@ -212,7 +206,7 @@ async def verify_code(req: ActivationCheckReq, request: Request):
     except Exception as e:
         return JSONResponse(
             status_code=500,
-            content={"valid": False, "message": f"Server error: {str(e)}"}
+            content={"valid": False, "message": f"خطأ في الخادم: {str(e)}"}
         )
     finally:
         conn.close()
