@@ -44,7 +44,7 @@ api_keys = [
 api_keys = [k for k in api_keys if k]
 
 if not api_keys:
-    raise RuntimeError("No GEMINI API KEYS found")
+    print("WARNING: No GEMINI API KEYS found")
 
 key_cycle = itertools.cycle(api_keys)
 
