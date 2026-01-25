@@ -61,7 +61,7 @@ def root():
     return {"status": "running"}
 
 @app.get("/health")
-def health():
+def health(_: None = Depends(activation_required)):
     return {"status": "ok"}
 
 @app.post("/ask")
