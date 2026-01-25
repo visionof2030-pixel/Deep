@@ -1,4 +1,3 @@
-# main.py
 from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -43,9 +42,6 @@ api_keys = [
 
 api_keys = [k for k in api_keys if k]
 
-if not api_keys:
-    print("WARNING: No GEMINI API KEYS found")
-
 key_cycle = itertools.cycle(api_keys)
 
 def get_api_key():
@@ -54,6 +50,10 @@ def get_api_key():
 def admin_auth(x_admin_token: str = Header(...)):
     if x_admin_token != ADMIN_TOKEN:
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+@app.get("/")
+def root():
+    return {"status": "running"}
 
 @app.get("/health")
 def health():
