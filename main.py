@@ -1,16 +1,26 @@
-from fastapi import FastAPI, HTTPException, Depends, Header, Request
+from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import os
 import itertools
 import google.generativeai as genai
-from database import init_db, get_connection
+
+# ================== SAFE DATABASE INIT ==================
+try:
+    from database import init_db, get_connection
+    try:
+        init_db()
+    except Exception as e:
+        print("DB INIT ERROR:", e)
+except Exception as e:
+    print("DATABASE IMPORT ERROR:", e)
+    get_connection = None
+
 from create_key import create_key
 from security import activation_required
 
-ADMIN_TOKEN = os.getenv("ADMIN_TOKEN")
-
+# ================== APP ==================
 app = FastAPI()
 
 app.add_middleware(
@@ -21,14 +31,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-init_db()
-
-class Req(BaseModel):
-    prompt: str
-
-class GenerateKeyReq(BaseModel):
-    expires_at: str | None = None
-    usage_limit: int | None = None
+# ================== ENV ==================
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
 
 api_keys = [
     os.getenv("GEMINI_API_KEY_1"),
@@ -39,18 +43,32 @@ api_keys = [
     os.getenv("GEMINI_API_KEY_6"),
     os.getenv("GEMINI_API_KEY_7"),
 ]
-
 api_keys = [k for k in api_keys if k]
 
-key_cycle = itertools.cycle(api_keys)
+if not api_keys:
+    print("WARNING: NO GEMINI KEYS FOUND")
+
+key_cycle = itertools.cycle(api_keys) if api_keys else None
 
 def get_api_key():
+    if not key_cycle:
+        raise HTTPException(status_code=500, detail="No API keys configured")
     return next(key_cycle)
 
+# ================== MODELS ==================
+class Req(BaseModel):
+    prompt: str
+
+class GenerateKeyReq(BaseModel):
+    expires_at: str | None = None
+    usage_limit: int | None = None
+
+# ================== AUTH ==================
 def admin_auth(x_admin_token: str = Header(...)):
     if x_admin_token != ADMIN_TOKEN:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+# ================== ROUTES ==================
 @app.get("/")
 def root():
     return {"status": "running"}
@@ -75,6 +93,8 @@ def admin_generate(req: GenerateKeyReq):
 
 @app.get("/admin/codes", dependencies=[Depends(admin_auth)])
 def admin_codes():
+    if not get_connection:
+        return []
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("SELECT id, code, is_active, usage_count FROM activation_codes")
@@ -87,6 +107,8 @@ def admin_codes():
 
 @app.put("/admin/code/{code_id}/toggle", dependencies=[Depends(admin_auth)])
 def admin_toggle(code_id: int):
+    if not get_connection:
+        return {"status": "db disabled"}
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
@@ -99,6 +121,8 @@ def admin_toggle(code_id: int):
 
 @app.delete("/admin/code/{code_id}", dependencies=[Depends(admin_auth)])
 def admin_delete(code_id: int):
+    if not get_connection:
+        return {"status": "db disabled"}
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("DELETE FROM activation_codes WHERE id=?", (code_id,))
