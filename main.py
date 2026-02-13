@@ -1089,7 +1089,8 @@ REPORTS = [
 ]
 
 # إدارات التعليم
-EDللتعليم بمنطقة مكة المكرمة",
+EDUCATION_OFFICES = [
+    "الإدارة العامة للتعليم بمنطقة مكة المكرمة",
     "الإدارة العامة للتعليم بمنطقة الرياض",
     "الإدارة العامة للتعليم بمنطقة المدينة المنورة",
     "الإدارة العامة للتعليم بالمنطقة الشرقية",
@@ -1650,4 +1651,4 @@ def admin_delete(code_id: int):
 # ---------- Admin Panel ----------
 @app.get("/admin/panel", response_class=HTMLResponse)
 def admin_panel():
-    return Path("admin.html").read_text(encoding="utf-8")
+    return Path("admin.html").read_text(encoding="utf-8") 
