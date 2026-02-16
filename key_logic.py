@@ -1,70 +1,34 @@
-from datetime import datetime, timedelta
-from fastapi import Header, HTTPException
+import uuid
 from database import get_connection
+from datetime import datetime
 
-def activation_required(x_activation_code: str = Header(...)):
+def create_key(duration_minutes=None, duration_days=None, usage_limit=None):
     """
-    التحقق من صلاحية كود التفعيل.
-    - إذا كان الاشتراك لم يبدأ بعد (started_at = NULL) يتم بدؤه الآن.
-    - يتم التحقق من انتهاء المدة والحد الأقصى للاستخدام.
+    ينشئ كود تفعيل جديد.
+    - duration_minutes: مدة الاشتراك بالدقائق (إذا وجدت)
+    - duration_days: مدة الاشتراك بالأيام (إذا وجدت)
+    - usage_limit: عدد مرات الاستخدام المسموح بها
     """
+    code = str(uuid.uuid4()).upper().replace("-", "")[:16]
+
     conn = get_connection()
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT id, is_active, started_at, expires_at,
-               duration_minutes, duration_days,
-               usage_limit, usage_count
-        FROM activation_codes
-        WHERE code=?
-    """, (x_activation_code,))
+        INSERT INTO activation_codes
+        (code, is_active, created_at, started_at, expires_at,
+         duration_minutes, duration_days,
+         usage_limit, usage_count)
+        VALUES (?, 1, ?, NULL, NULL, ?, ?, ?, 0)
+    """, (
+        code,
+        datetime.utcnow().isoformat(),
+        duration_minutes,
+        duration_days,
+        usage_limit
+    ))
 
-    row = cur.fetchone()
-
-    if not row:
-        conn.close()
-        raise HTTPException(status_code=403, detail="كود التفعيل غير صحيح")
-
-    (code_id, active, started_at, expires_at,
-     duration_minutes, duration_days,
-     usage_limit, usage_count) = row
-
-    if not active:
-        conn.close()
-        raise HTTPException(status_code=403, detail="تم إيقاف الاشتراك")
-
-    now = datetime.utcnow()
-
-    # 🔥 بدء الاشتراك عند أول استخدام فقط
-    if not started_at:
-        # حساب مدة الاشتراك
-        delta = timedelta(
-            minutes=duration_minutes or 0,
-            days=duration_days or 0
-        )
-        new_expiry = now + delta
-
-        cur.execute("""
-            UPDATE activation_codes
-            SET started_at=?, expires_at=?
-            WHERE id=?
-        """, (now.isoformat(), new_expiry.isoformat(), code_id))
-
-        conn.commit()
-
-        # تحديث المتغير المحلي
-        expires_at = new_expiry.isoformat()
-        started_at = now.isoformat()
-
-    # التحقق من انتهاء المدة
-    if expires_at and datetime.fromisoformat(expires_at) < now:
-        conn.close()
-        raise HTTPException(status_code=403, detail="انتهت مدة الاشتراك")
-
-    # التحقق من الحد الأقصى للاستخدام
-    if usage_limit is not None and usage_count >= usage_limit:
-        conn.close()
-        raise HTTPException(status_code=403, detail="تم استهلاك جميع الاستخدامات المسموحة")
-
+    conn.commit()
     conn.close()
-    return code_id
+
+    return code
