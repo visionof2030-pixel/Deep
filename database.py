@@ -12,7 +12,6 @@ def init_db():
     conn = get_connection()
     cur = conn.cursor()
 
-    # إنشاء الجدول بالهيكل الجديد (إذا لم يكن موجوداً)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS activation_codes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,7 +32,7 @@ def init_db():
     try:
         cur.execute("ALTER TABLE activation_codes ADD COLUMN started_at TEXT")
     except sqlite3.OperationalError:
-        pass  # العمود موجود مسبقاً
+        pass
 
     try:
         cur.execute("ALTER TABLE activation_codes ADD COLUMN duration_minutes INTEGER")
