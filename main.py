@@ -1260,7 +1260,9 @@ AI_PROMPT_TEMPLATE = """أنت خبير تربوي تعليمي محترف تم�
 6. نقاط التحسين
 7. التوصيات
 
-يرجى تقديم الإجابة باللغة العربية الفصحى، وتنظيمها بحيث يكون كل حقل في سطر منفصل يبدأ برقمه فقط دون ذكر العنوان."""rompt(report_name: str, subcategory_name: str, criterion_name: str, report_data: dict = None):
+يرجى تقديم الإجابة باللغة العربية الفصحى، وتنظيمها بحيث يكون كل حقل في سطر منفصل يبدأ برقمه فقط دون ذكر العنوان."""
+
+def build_ai_prompt(report_name: str, subcategory_name: str, criterion_name: str, report_data: dict = None):
     """بناء البرومت المناسب للذكاء الاصطناعي"""
     if not report_data:
         report_data = {}
