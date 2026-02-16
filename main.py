@@ -13,7 +13,7 @@ from typing import Optional, List, Dict, Any
 
 from database import init_db, get_connection
 from create_key import create_key
-from security import activation_required
+from key_logic import activation_required   # ✅ استخدام الملف الجديد
 
 # ---------- Init DB ----------
 init_db()
@@ -243,7 +243,7 @@ SUBCATEGORIES = [
 ]
 
 # ============================================================================
-# التقارير (أكثر من 1100 تقرير) - بعد إزالة التحيز للمواد الدراسية
+# التقارير (أكثر من 1100 تقرير) - كاملة كما وردت
 # ============================================================================
 
 REPORTS = [
@@ -1308,7 +1308,10 @@ def subscription_status(code_id: int = Depends(activation_required)):
 
     cur.execute("""
         SELECT
+            started_at,
             expires_at,
+            duration_minutes,
+            duration_days,
             usage_limit,
             usage_count
         FROM activation_codes
@@ -1320,23 +1323,32 @@ def subscription_status(code_id: int = Depends(activation_required)):
     if not row:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
-    expires_at, usage_limit, usage_count = row
-    now = datetime.utcnow()
+    (started_at, expires_at, duration_minutes, duration_days,
+     usage_limit, usage_count) = row
 
+    now = datetime.utcnow()
     expired = False
-    if expires_at and datetime.fromisoformat(expires_at) < now:
-        expired = True
+    remaining_seconds = None
+
+    if expires_at:
+        expiry = datetime.fromisoformat(expires_at)
+        if expiry < now:
+            expired = True
+        else:
+            remaining_seconds = int((expiry - now).total_seconds())
+
     if usage_limit is not None and usage_count >= usage_limit:
         expired = True
 
     return {
+        "started_at": started_at,
         "expires_at": expires_at,
+        "duration_minutes": duration_minutes,
+        "duration_days": duration_days,
         "usage_limit": usage_limit,
         "usage_used": usage_count,
-        "usage_remaining": (
-            max(usage_limit - usage_count, 0)
-            if usage_limit is not None else None
-        ),
+        "usage_remaining": max(usage_limit - usage_count, 0) if usage_limit is not None else None,
+        "remaining_seconds": remaining_seconds,
         "expired": expired
     }
 
@@ -1346,6 +1358,17 @@ def ask(
     req: Req,
     code_id: int = Depends(activation_required)
 ):
+    # تنفيذ طلب Gemini
+    try:
+        genai.configure(api_key=get_api_key())
+        model = genai.GenerativeModel("models/gemini-2.5-flash-lite")
+        response = model.generate_content(req.prompt)
+        answer = response.text
+    except Exception as e:
+        # في حالة الفشل، لا يتم خصم الاستخدام
+        raise HTTPException(status_code=500, detail=f"فشل الاتصال بالذكاء الاصطناعي: {str(e)}")
+
+    # ✅ بعد النجاح فقط: خصم استخدام واحد
     conn = get_connection()
     cur = conn.cursor()
 
@@ -1354,16 +1377,17 @@ def ask(
         SET usage_count = usage_count + 1,
             last_used_at = ?
         WHERE id = ?
+        AND (usage_limit IS NULL OR usage_count < usage_limit)
     """, (datetime.utcnow().isoformat(), code_id))
+
+    if cur.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=403, detail="تم استهلاك جميع الاستخدامات المسموحة")
 
     conn.commit()
     conn.close()
 
-    genai.configure(api_key=get_api_key())
-    model = genai.GenerativeModel("models/gemini-2.5-flash-lite")
-    response = model.generate_content(req.prompt)
-
-    return {"answer": response.text}
+    return {"answer": answer}
 
 # ---------- مسارات البيانات الجديدة ----------
 
@@ -1536,26 +1560,38 @@ def generate_report_content(
         criterion_name=criterion["name"],
         report_data=req.report_data
     )
-    
+
+    # تنفيذ طلب Gemini
+    try:
+        genai.configure(api_key=get_api_key())
+        model = genai.GenerativeModel("models/gemini-2.5-flash-lite")
+        response = model.generate_content(prompt)
+        content = response.text
+    except Exception as e:
+        # في حالة الفشل، لا يتم خصم الاستخدام
+        raise HTTPException(status_code=500, detail=f"فشل توليد المحتوى: {str(e)}")
+
+    # ✅ بعد النجاح فقط: خصم استخدام واحد
     conn = get_connection()
     cur = conn.cursor()
-    
+
     cur.execute("""
         UPDATE activation_codes
         SET usage_count = usage_count + 1,
             last_used_at = ?
         WHERE id = ?
+        AND (usage_limit IS NULL OR usage_count < usage_limit)
     """, (datetime.utcnow().isoformat(), code_id))
-    
+
+    if cur.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=403, detail="تم استهلاك جميع الاستخدامات المسموحة")
+
     conn.commit()
     conn.close()
-    
-    genai.configure(api_key=get_api_key())
-    model = genai.GenerativeModel("models/gemini-2.5-flash-lite")
-    response = model.generate_content(prompt)
-    
+
     return {
-        "content": response.text,
+        "content": content,
         "report_id": req.report_id,
         "report_name": report["name"],
         "subcategory_name": subcategory["name"],
@@ -1570,21 +1606,21 @@ def admin_generate(req: GenerateKeyReq):
         raise HTTPException(status_code=400, detail="Invalid plan")
 
     plan = PLANS[req.plan]
-    now = datetime.utcnow()
-    expires_at = now
+    duration_minutes = plan.get("minutes")
+    duration_days = plan.get("days")
+    usage_limit = plan["usage"]
 
-    if "minutes" in plan:
-        expires_at += timedelta(minutes=plan["minutes"])
-    if "days" in plan:
-        expires_at += timedelta(days=plan["days"])
+    code = create_key(
+        duration_minutes=duration_minutes,
+        duration_days=duration_days,
+        usage_limit=usage_limit
+    )
 
     return {
-        "code": create_key(
-            expires_at.isoformat(),
-            plan["usage"]
-        ),
-        "expires_at": expires_at.isoformat(),
-        "usage_limit": plan["usage"]
+        "code": code,
+        "duration_minutes": duration_minutes,
+        "duration_days": duration_days,
+        "usage_limit": usage_limit
     }
 
 @app.get("/admin/codes", dependencies=[Depends(admin_auth)])
@@ -1596,10 +1632,16 @@ def admin_codes():
             id,
             code,
             is_active,
+            created_at,
+            started_at,
             expires_at,
+            duration_minutes,
+            duration_days,
             usage_limit,
-            usage_count
+            usage_count,
+            last_used_at
         FROM activation_codes
+        ORDER BY id DESC
     """)
     rows = cur.fetchall()
     conn.close()
@@ -1608,19 +1650,27 @@ def admin_codes():
     result = []
 
     for r in rows:
+        (id, code, is_active, created_at, started_at, expires_at,
+         duration_minutes, duration_days, usage_limit, usage_count, last_used_at) = r
+
         expired = False
-        if r[3] and datetime.fromisoformat(r[3]) < now:
+        if expires_at and datetime.fromisoformat(expires_at) < now:
             expired = True
-        if r[4] is not None and r[5] >= r[4]:
+        if usage_limit is not None and usage_count >= usage_limit:
             expired = True
 
         result.append({
-            "id": r[0],
-            "code": r[1],
-            "active": bool(r[2]),
-            "expires_at": r[3],
-            "usage_limit": r[4],
-            "usage_count": r[5],
+            "id": id,
+            "code": code,
+            "is_active": bool(is_active),
+            "created_at": created_at,
+            "started_at": started_at,
+            "expires_at": expires_at,
+            "duration_minutes": duration_minutes,
+            "duration_days": duration_days,
+            "usage_limit": usage_limit,
+            "usage_count": usage_count,
+            "last_used_at": last_used_at,
             "expired": expired
         })
 
