@@ -1,4 +1,4 @@
-# main.py (بعد التقسيم)
+# main.py (بعد التعديل النهائي)
 
 from fastapi import FastAPI, HTTPException, Depends, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -600,19 +600,19 @@ def generate_report_content(
     code_id: int = Depends(activation_required),
 ):
 
-    # ===== الوضع الحر (بدون معيار) =====
+    # ===== الوضع الحر بجودة احترافية =====
     if not req.criterion_id or not req.subcategory_id or not req.report_id:
 
         title = req.report_data.get("title", "تقرير مدرسي")
 
-        prompt = f"""
-        اكتب تقريراً مدرسياً احترافياً بعنوان: {title}
-        بأسلوب رسمي منظم يتضمن:
-        - مقدمة
-        - تفاصيل التنفيذ
-        - النتائج
-        - التوصيات
-        """
+        # استخدام نفس قالب الأدوار الاحترافي
+        prompt = build_ai_prompt(
+            role=req.role,
+            report_name=title,
+            subcategory_name="عام",
+            criterion_name="عام",
+            report_data=req.report_data,
+        )
 
         try:
             genai.configure(api_key=get_api_key())
