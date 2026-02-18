@@ -619,6 +619,17 @@ def generate_report_content(
             model = genai.GenerativeModel("models/gemini-2.5-flash-lite")
             response = model.generate_content(prompt)
             content = response.text
+
+            # تنظيف أي رموز Markdown غير مرغوبة
+            content = (
+                content.replace("**", "")
+                       .replace("*", "")
+                       .replace("##", "")
+                       .replace("#", "")
+                       .replace("`", "")
+                       .replace("-", "")
+            )
+
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"فشل توليد المحتوى: {str(e)}")
 
@@ -664,6 +675,17 @@ def generate_report_content(
         model = genai.GenerativeModel("models/gemini-2.5-flash-lite")
         response = model.generate_content(prompt)
         content = response.text
+
+        # تنظيف أي رموز Markdown غير مرغوبة
+        content = (
+            content.replace("**", "")
+                   .replace("*", "")
+                   .replace("##", "")
+                   .replace("#", "")
+                   .replace("`", "")
+                   .replace("-", "")
+        )
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"فشل توليد المحتوى: {str(e)}")
 
