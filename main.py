@@ -77,9 +77,9 @@ class GenerateKeyReq(BaseModel):
     plan: str
 
 class GenerateReportRequest(BaseModel):
-    criterion_id: str
-    subcategory_id: str
-    report_id: str
+    criterion_id: Optional[str] = None
+    subcategory_id: Optional[str] = None
+    report_id: Optional[str] = None
     role: str = "teacher"
     report_data: Dict[str, Any] = {}
 
@@ -599,6 +599,40 @@ def generate_report_content(
     req: GenerateReportRequest,
     code_id: int = Depends(activation_required),
 ):
+
+    # ===== الوضع الحر (بدون معيار) =====
+    if not req.criterion_id or not req.subcategory_id or not req.report_id:
+
+        title = req.report_data.get("title", "تقرير مدرسي")
+
+        prompt = f"""
+        اكتب تقريراً مدرسياً احترافياً بعنوان: {title}
+        بأسلوب رسمي منظم يتضمن:
+        - مقدمة
+        - تفاصيل التنفيذ
+        - النتائج
+        - التوصيات
+        """
+
+        try:
+            genai.configure(api_key=get_api_key())
+            model = genai.GenerativeModel("models/gemini-2.5-flash-lite")
+            response = model.generate_content(prompt)
+            content = response.text
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"فشل توليد المحتوى: {str(e)}")
+
+        return {
+            "content": content,
+            "report_id": None,
+            "report_name": title,
+            "subcategory_name": None,
+            "criterion_name": None,
+            "generated_at": datetime.utcnow().isoformat(),
+        }
+
+    # ===== الوضع المرتبط بالمعايير =====
+
     report = get_report_by_id(req.report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
@@ -632,27 +666,6 @@ def generate_report_content(
         content = response.text
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"فشل توليد المحتوى: {str(e)}")
-
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        UPDATE activation_codes
-        SET usage_count = usage_count + 1,
-            last_used_at = ?
-        WHERE id = ?
-        AND (usage_limit IS NULL OR usage_count < usage_limit)
-    """,
-        (datetime.utcnow().isoformat(), code_id),
-    )
-
-    if cur.rowcount == 0:
-        conn.close()
-        raise HTTPException(status_code=403, detail="تم استهلاك جميع الاستخدامات المسموحة")
-
-    conn.commit()
-    conn.close()
 
     return {
         "content": content,
