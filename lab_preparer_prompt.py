@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # =========================
-# المعايير الرئيسية لمحضر المختبر
+# المعايير الرئيسية
 # =========================
 
 LAB_CRITERIA = [
@@ -28,51 +28,17 @@ LAB_SUBCATEGORIES = [
     {"id": "lp_c1_s2", "criterion_id": "lp_c1", "name": "تطبيق إجراءات العمل المعتمدة", "order": 2},
     {"id": "lp_c1_s3", "criterion_id": "lp_c1", "name": "المحافظة على العهد والأدوات", "order": 3},
     {"id": "lp_c1_s4", "criterion_id": "lp_c1", "name": "تنفيذ المهام المكلف بها بدقة", "order": 4},
+]
 
-    {"id": "lp_c2_s1", "criterion_id": "lp_c2", "name": "التعاون مع المعلمين في تنفيذ التجارب", "order": 1},
-    {"id": "lp_c2_s2", "criterion_id": "lp_c2", "name": "المشاركة في الاجتماعات المهنية", "order": 2},
-    {"id": "lp_c2_s3", "criterion_id": "lp_c2", "name": "تبادل الخبرات الفنية", "order": 3},
-    {"id": "lp_c2_s4", "criterion_id": "lp_c2", "name": "دعم الأنشطة العلمية المدرسية", "order": 4},
+# =========================
+# التقارير (الحد الأدنى المطلوب لتشغيل النظام)
+# =========================
 
-    {"id": "lp_c3_s1", "criterion_id": "lp_c3", "name": "المشاركة في المعارض والفعاليات العلمية", "order": 1},
-    {"id": "lp_c3_s2", "criterion_id": "lp_c3", "name": "دعم المبادرات التوعوية ذات العلاقة", "order": 2},
-    {"id": "lp_c3_s3", "criterion_id": "lp_c3", "name": "المساهمة في تعزيز ثقافة السلامة", "order": 3},
-
-    {"id": "lp_c4_s1", "criterion_id": "lp_c4", "name": "دعم تنفيذ التجارب العملية", "order": 1},
-    {"id": "lp_c4_s2", "criterion_id": "lp_c4", "name": "تجهيز أنشطة تطبيقية متنوعة", "order": 2},
-    {"id": "lp_c4_s3", "criterion_id": "lp_c4", "name": "مساعدة المعلمين في تفعيل الجانب العملي", "order": 3},
-
-    {"id": "lp_c5_s1", "criterion_id": "lp_c5", "name": "تهيئة بيئة عملية داعمة للتعلم", "order": 1},
-    {"id": "lp_c5_s2", "criterion_id": "lp_c5", "name": "توفير أدوات تساعد على الفهم التطبيقي", "order": 2},
-    {"id": "lp_c5_s3", "criterion_id": "lp_c5", "name": "دعم التعلم بالممارسة", "order": 3},
-
-    {"id": "lp_c6_s1", "criterion_id": "lp_c6", "name": "إعداد جدول منظم للتجارب", "order": 1},
-    {"id": "lp_c6_s2", "criterion_id": "lp_c6", "name": "التنسيق المسبق مع المعلمين", "order": 2},
-    {"id": "lp_c6_s3", "criterion_id": "lp_c6", "name": "تحديد الأدوات والمواد المطلوبة", "order": 3},
-
-    {"id": "lp_c7_s1", "criterion_id": "lp_c7", "name": "الإلمام بالمفاهيم العلمية المرتبطة بالمقررات", "order": 1},
-    {"id": "lp_c7_s2", "criterion_id": "lp_c7", "name": "تشغيل الأجهزة بكفاءة", "order": 2},
-    {"id": "lp_c7_s3", "criterion_id": "lp_c7", "name": "تقديم الدعم الفني أثناء الحصص", "order": 3},
-
-    {"id": "lp_c8_s1", "criterion_id": "lp_c8", "name": "تجهيز الأدوات والمواد مسبقًا", "order": 1},
-    {"id": "lp_c8_s2", "criterion_id": "lp_c8", "name": "التأكد من صلاحية الأجهزة", "order": 2},
-    {"id": "lp_c8_s3", "criterion_id": "lp_c8", "name": "توفير بدائل مناسبة عند الحاجة", "order": 3},
-
-    {"id": "lp_c9_s1", "criterion_id": "lp_c9", "name": "تطبيق معايير الأمن والسلامة", "order": 1},
-    {"id": "lp_c9_s2", "criterion_id": "lp_c9", "name": "توعية الطلاب بإجراءات السلامة", "order": 2},
-    {"id": "lp_c9_s3", "criterion_id": "lp_c9", "name": "متابعة جاهزية أدوات الطوارئ", "order": 3},
-
-    {"id": "lp_c10_s1", "criterion_id": "lp_c10", "name": "ترتيب الأجهزة وفق معايير السلامة", "order": 1},
-    {"id": "lp_c10_s2", "criterion_id": "lp_c10", "name": "تنظيم بيئة العمل المختبرية", "order": 2},
-    {"id": "lp_c10_s3", "criterion_id": "lp_c10", "name": "حفظ المواد بطريقة آمنة", "order": 3},
-
-    {"id": "lp_c11_s1", "criterion_id": "lp_c11", "name": "توثيق الأنشطة المنفذة", "order": 1},
-    {"id": "lp_c11_s2", "criterion_id": "lp_c11", "name": "إعداد تقارير عن حالة الأجهزة", "order": 2},
-    {"id": "lp_c11_s3", "criterion_id": "lp_c11", "name": "رفع احتياجات الصيانة للإدارة", "order": 3},
-
-    {"id": "lp_c12_s1", "criterion_id": "lp_c12", "name": "متابعة حالة الأجهزة", "order": 1},
-    {"id": "lp_c12_s2", "criterion_id": "lp_c12", "name": "تحديد احتياجات الإحلال أو الصيانة", "order": 2},
-    {"id": "lp_c12_s3", "criterion_id": "lp_c12", "name": "توثيق حركة العهد والمستهلكات", "order": 3},
+LAB_REPORTS = [
+    {"id": "lp_c1_s1_r001", "subcategory_id": "lp_c1_s1", "name": "تقرير الالتزام بالأنظمة والتعليمات", "order": 1},
+    {"id": "lp_c1_s2_r001", "subcategory_id": "lp_c1_s2", "name": "تقرير تطبيق إجراءات العمل المعتمدة", "order": 1},
+    {"id": "lp_c1_s3_r001", "subcategory_id": "lp_c1_s3", "name": "تقرير المحافظة على العهد والأدوات", "order": 1},
+    {"id": "lp_c1_s4_r001", "subcategory_id": "lp_c1_s4", "name": "تقرير تنفيذ المهام المكلف بها بدقة", "order": 1},
 ]
 
 # =========================
@@ -107,6 +73,5 @@ LAB_PROMPT_TEMPLATE = """أنت محضر مختبر علمي متمرس، مسؤ
 - إبراز إجراءات السلامة والصيانة.
 - توضيح التعاون مع المعلمين.
 - بيان أثر العمل على سلامة الطلاب وجودة التعليم.
-- من 5 إلى 7 أسطر لكل حقل.
 - كل بند يبدأ برقمه فقط دون كتابة عنوانه.
 """
