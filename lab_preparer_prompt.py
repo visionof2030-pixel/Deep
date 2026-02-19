@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # قائمة المعايير الرئيسية لمحضر المختبر
-LP_CRITERIA = [
+LAB_CRITERIA = [
     {"id": "lp_c1", "name": "أداء الواجبات الوظيفية", "order": 1},
     {"id": "lp_c2", "name": "التفاعل مع المجتمع المهني", "order": 2},
     {"id": "lp_c3", "name": "التفاعل مع أولياء الأمور", "order": 3},
@@ -17,7 +17,7 @@ LP_CRITERIA = [
 ]
 
 # التصنيفات الفرعية لمحضر المختبر
-LP_SUBCATEGORIES = [
+LAB_SUBCATEGORIES = [
     # lp_c1
     {"id": "lp_c1_s1", "criterion_id": "lp_c1", "name": "الالتزام بالأنظمة والتعليمات", "order": 1},
     {"id": "lp_c1_s2", "criterion_id": "lp_c1", "name": "تطبيق إجراءات العمل المعتمدة", "order": 2},
@@ -71,7 +71,7 @@ LP_SUBCATEGORIES = [
 ]
 
 # قائمة التقارير (تقريران لكل تصنيف فرعي)
-LP_REPORTS = [
+LAB_REPORTS = [
     # lp_c1_s1
     {"id": "lp_c1_s1_r001", "subcategory_id": "lp_c1_s1", "name": "تقرير الالتزام بالأنظمة والتعليمات", "order": 1},
     {"id": "lp_c1_s1_r002", "subcategory_id": "lp_c1_s1", "name": "تقرير متابعة تطبيق التعليمات المنظمة لعمل المختبر", "order": 2},
