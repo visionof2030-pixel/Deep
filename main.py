@@ -16,7 +16,7 @@ from database import init_db, get_connection
 from create_key import create_key
 from key_logic import activation_required
 
-# استيراد بيانات الأدوار والبرومبتات
+# استيراد بيانات الأدوار والبرومبتات (الموجودة سابقاً)
 from teacher_data import (
     TEACHER_CRITERIA,
     TEACHER_SUBCATEGORIES,
@@ -46,6 +46,32 @@ from activity_leader_prompt import (
     AL_SUBCATEGORIES,
     AL_REPORTS,
     ACTIVITY_LEADER_PROMPT_TEMPLATE,
+)
+
+# استيراد بيانات الأدوار الجديدة
+from kindergarten_teacher_prompt import (
+    KG_CRITERIA,
+    KG_SUBCATEGORIES,
+    KG_REPORTS,
+    KG_PROMPT_TEMPLATE,
+)
+from lab_preparer_prompt import (
+    LAB_CRITERIA,
+    LAB_SUBCATEGORIES,
+    LAB_REPORTS,
+    LAB_PROMPT_TEMPLATE,
+)
+from school_principal_prompt import (
+    PRINCIPAL_CRITERIA,
+    PRINCIPAL_SUBCATEGORIES,
+    PRINCIPAL_REPORTS,
+    PRINCIPAL_PROMPT_TEMPLATE,
+)
+from educational_supervisor_prompt import (
+    SUPERVISOR_CRITERIA,
+    SUPERVISOR_SUBCATEGORIES,
+    SUPERVISOR_REPORTS,
+    SUPERVISOR_PROMPT_TEMPLATE,
 )
 
 # ---------- Init DB ----------
@@ -116,7 +142,7 @@ def get_api_key():
     return next(key_cycle)
 
 # ============================================================================
-# الأدوار المتاحة
+# الأدوار المتاحة (بما في ذلك الأدوار الجديدة)
 # ============================================================================
 ROLES = [
     {"id": "teacher", "name": "معلم"},
@@ -124,6 +150,10 @@ ROLES = [
     {"id": "student_guide", "name": "الموجه الطلابي"},
     {"id": "health_guide", "name": "الموجه الصحي"},
     {"id": "activity_leader", "name": "رائد النشاط"},
+    {"id": "kindergarten_teacher", "name": "معلمة رياض الأطفال"},
+    {"id": "lab_preparer", "name": "محضر المختبر"},
+    {"id": "school_principal", "name": "مدير المدرسة"},
+    {"id": "educational_supervisor", "name": "المشرف التربوي"},
 ]
 
 # ============================================================================
@@ -135,6 +165,10 @@ ALL_CRITERIA = (
     + SG_CRITERIA
     + HG_CRITERIA
     + AL_CRITERIA
+    + KG_CRITERIA
+    + LAB_CRITERIA
+    + PRINCIPAL_CRITERIA
+    + SUPERVISOR_CRITERIA
 )
 ALL_SUBCATEGORIES = (
     TEACHER_SUBCATEGORIES
@@ -142,6 +176,10 @@ ALL_SUBCATEGORIES = (
     + SG_SUBCATEGORIES
     + HG_SUBCATEGORIES
     + AL_SUBCATEGORIES
+    + KG_SUBCATEGORIES
+    + LAB_SUBCATEGORIES
+    + PRINCIPAL_SUBCATEGORIES
+    + SUPERVISOR_SUBCATEGORIES
 )
 ALL_REPORTS = (
     TEACHER_REPORTS
@@ -149,6 +187,10 @@ ALL_REPORTS = (
     + SG_REPORTS
     + HG_REPORTS
     + AL_REPORTS
+    + KG_REPORTS
+    + LAB_REPORTS
+    + PRINCIPAL_REPORTS
+    + SUPERVISOR_REPORTS
 )
 
 # إدارات التعليم (ثابتة)
@@ -278,6 +320,10 @@ def build_ai_prompt(
         "student_guide": STUDENT_GUIDE_PROMPT_TEMPLATE,
         "health_guide": HEALTH_GUIDE_PROMPT_TEMPLATE,
         "activity_leader": ACTIVITY_LEADER_PROMPT_TEMPLATE,
+        "kindergarten_teacher": KG_PROMPT_TEMPLATE,
+        "lab_preparer": LAB_PROMPT_TEMPLATE,
+        "school_principal": PRINCIPAL_PROMPT_TEMPLATE,
+        "educational_supervisor": SUPERVISOR_PROMPT_TEMPLATE,
     }
     template = templates.get(role, TEACHER_PROMPT_TEMPLATE)
 
@@ -331,6 +377,14 @@ def get_criteria_by_role(role: str):
         return HG_CRITERIA
     elif role == "activity_leader":
         return AL_CRITERIA
+    elif role == "kindergarten_teacher":
+        return KG_CRITERIA
+    elif role == "lab_preparer":
+        return LAB_CRITERIA
+    elif role == "school_principal":
+        return PRINCIPAL_CRITERIA
+    elif role == "educational_supervisor":
+        return SUPERVISOR_CRITERIA
     else:
         return TEACHER_CRITERIA
 
@@ -345,6 +399,14 @@ def get_subcategories_by_role(role: str):
         return HG_SUBCATEGORIES
     elif role == "activity_leader":
         return AL_SUBCATEGORIES
+    elif role == "kindergarten_teacher":
+        return KG_SUBCATEGORIES
+    elif role == "lab_preparer":
+        return LAB_SUBCATEGORIES
+    elif role == "school_principal":
+        return PRINCIPAL_SUBCATEGORIES
+    elif role == "educational_supervisor":
+        return SUPERVISOR_SUBCATEGORIES
     else:
         return TEACHER_SUBCATEGORIES
 
@@ -359,11 +421,19 @@ def get_reports_by_role(role: str):
         return HG_REPORTS
     elif role == "activity_leader":
         return AL_REPORTS
+    elif role == "kindergarten_teacher":
+        return KG_REPORTS
+    elif role == "lab_preparer":
+        return LAB_REPORTS
+    elif role == "school_principal":
+        return PRINCIPAL_REPORTS
+    elif role == "educational_supervisor":
+        return SUPERVISOR_REPORTS
     else:
         return TEACHER_REPORTS
 
 # ============================================================================
-# المسارات (Routes)
+# المسارات (Routes) – تبقى كما هي دون تغيير
 # ============================================================================
 
 @app.get("/")
