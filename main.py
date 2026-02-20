@@ -71,9 +71,9 @@ from educational_supervisor_prompt import (
     SUPERVISOR_CRITERIA,
     SUPERVISOR_SUBCATEGORIES,
     SUPERVISOR_REPORTS,
-    SUPERVISOR_ANALYTICAL_TEMPLATE,      # <-- قالب التحليل
-    SUPERVISOR_PROJECT_TEMPLATE,          # <-- قالب المشاريع
-    SUPERVISOR_SUPPORT_TEMPLATE,           # <-- قالب الدعم الإشرافي
+    SUPERVISOR_ANALYTICAL_TEMPLATE,
+    SUPERVISOR_PROJECT_TEMPLATE,
+    SUPERVISOR_SUPPORT_TEMPLATE,
 )
 
 # ---------- Init DB ----------
@@ -709,7 +709,7 @@ def generate_report_content(
             response = model.generate_content(prompt)
             content = response.text
 
-            # تنظيف أي رموز Markdown غير مرغوبة
+            # تنظيف أي رموز Markdown غير مرغوبة وإزالة الأقواس المربعة
             content = (
                 content.replace("**", "")
                        .replace("*", "")
@@ -717,6 +717,8 @@ def generate_report_content(
                        .replace("#", "")
                        .replace("`", "")
                        .replace("-", "")
+                       .replace("[", "")   # إزالة الأقواس المربعة المفتوحة
+                       .replace("]", "")   # إزالة الأقواس المربعة المغلقة
             )
 
         except Exception as e:
@@ -768,7 +770,7 @@ def generate_report_content(
         response = model.generate_content(prompt)
         content = response.text
 
-        # تنظيف أي رموز Markdown غير مرغوبة
+        # تنظيف أي رموز Markdown غير مرغوبة وإزالة الأقواس المربعة
         content = (
             content.replace("**", "")
                    .replace("*", "")
@@ -776,6 +778,8 @@ def generate_report_content(
                    .replace("#", "")
                    .replace("`", "")
                    .replace("-", "")
+                   .replace("[", "")   # إزالة الأقواس المربعة المفتوحة
+                   .replace("]", "")   # إزالة الأقواس المربعة المغلقة
         )
 
     except Exception as e:
