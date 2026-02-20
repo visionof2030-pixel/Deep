@@ -301,6 +301,7 @@ def build_ai_prompt(
     report_name: str,
     subcategory_name: str,
     criterion_name: str,
+    criterion_percentage: str = "",      # <-- تمت الإضافة
     report_data: dict = None,
 ):
     """بناء البرومت المناسب للذكاء الاصطناعي بناءً على الدور"""
@@ -331,6 +332,7 @@ def build_ai_prompt(
         report_name=report_name,
         subcategory_name=subcategory_name,
         criterion_name=criterion_name,
+        criterion_percentage=criterion_percentage,   # <-- تمت الإضافة
         subject_line=subject_line,
         lesson_line=lesson_line,
         grade_line=grade_line,
@@ -681,6 +683,7 @@ def generate_report_content(
             report_name=title,
             subcategory_name="عام",
             criterion_name="عام",
+            criterion_percentage="",          # <-- تمت الإضافة (قيمة افتراضية)
             report_data=req.report_data,
         )
 
@@ -732,11 +735,14 @@ def generate_report_content(
     if subcategory["criterion_id"] != req.criterion_id:
         raise HTTPException(status_code=400, detail="Subcategory does not belong to this criterion")
 
+    criterion_percentage = criterion.get("percentage", "")   # <-- تم التعديل: استخراج النسبة
+
     prompt = build_ai_prompt(
         role=req.role,
         report_name=report["name"],
         subcategory_name=subcategory["name"],
         criterion_name=criterion["name"],
+        criterion_percentage=criterion_percentage,            # <-- تمت الإضافة
         report_data=req.report_data,
     )
 
