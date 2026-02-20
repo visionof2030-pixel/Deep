@@ -1,4 +1,4 @@
-# main.py (بعد التعديل النهائي)
+# main.py (بعد التعديلات النهائية)
 
 from fastapi import FastAPI, HTTPException, Depends, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,7 +16,7 @@ from database import init_db, get_connection
 from create_key import create_key
 from key_logic import activation_required
 
-# استيراد بيانات الأدوار والبرومبتات (الموجودة سابقاً)
+# استيراد بيانات الأدوار والبرومبتات
 from teacher_data import (
     TEACHER_CRITERIA,
     TEACHER_SUBCATEGORIES,
@@ -71,7 +71,9 @@ from educational_supervisor_prompt import (
     SUPERVISOR_CRITERIA,
     SUPERVISOR_SUBCATEGORIES,
     SUPERVISOR_REPORTS,
-    SUPERVISOR_PROMPT_TEMPLATE,
+    SUPERVISOR_ANALYTICAL_TEMPLATE,      # <-- قالب التحليل
+    SUPERVISOR_PROJECT_TEMPLATE,          # <-- قالب المشاريع
+    SUPERVISOR_SUPPORT_TEMPLATE,           # <-- قالب الدعم الإشرافي
 )
 
 # ---------- Init DB ----------
@@ -293,7 +295,7 @@ EDUCATIONAL_TOOLS = [
 ]
 
 # ============================================================================
-# برومبتات الذكاء الاصطناعي (المستوردة من الملفات)
+# برومبتات الذكاء الاصطناعي
 # ============================================================================
 
 def build_ai_prompt(
@@ -301,7 +303,7 @@ def build_ai_prompt(
     report_name: str,
     subcategory_name: str,
     criterion_name: str,
-    criterion_percentage: str = "",      # <-- تمت الإضافة
+    criterion_percentage: str = "",
     report_data: dict = None,
 ):
     """بناء البرومت المناسب للذكاء الاصطناعي بناءً على الدور"""
@@ -324,15 +326,29 @@ def build_ai_prompt(
         "kindergarten_teacher": KG_PROMPT_TEMPLATE,
         "lab_preparer": LAB_PROMPT_TEMPLATE,
         "school_principal": PRINCIPAL_PROMPT_TEMPLATE,
-        "educational_supervisor": SUPERVISOR_PROMPT_TEMPLATE,
+        # educational_supervisor يتم التعامل معه بشكل منفصل أسفل
     }
-    template = templates.get(role, TEACHER_PROMPT_TEMPLATE)
+
+    # معالجة خاصة للمشرف التربوي: اختيار القالب بناءً على نوع التقرير
+    if role == "educational_supervisor":
+        report_lower = report_name.lower()
+        # قالب تحليلي
+        if any(word in report_lower for word in ["تحليل", "مؤشر", "نتائج", "قياس", "اتجاهات"]):
+            template = SUPERVISOR_ANALYTICAL_TEMPLATE
+        # قالب مشروع / مبادرة
+        elif any(word in report_lower for word in ["مبادرة", "مشروع", "برنامج", "تطبيق", "تنفيذ"]):
+            template = SUPERVISOR_PROJECT_TEMPLATE
+        # القالب الافتراضي (دعم إشرافي)
+        else:
+            template = SUPERVISOR_SUPPORT_TEMPLATE
+    else:
+        template = templates.get(role, TEACHER_PROMPT_TEMPLATE)
 
     return template.format(
         report_name=report_name,
         subcategory_name=subcategory_name,
         criterion_name=criterion_name,
-        criterion_percentage=criterion_percentage,   # <-- تمت الإضافة
+        criterion_percentage=criterion_percentage,
         subject_line=subject_line,
         lesson_line=lesson_line,
         grade_line=grade_line,
@@ -342,7 +358,7 @@ def build_ai_prompt(
     )
 
 # ============================================================================
-# دوال مساعدة للبحث في البيانات
+# دوال مساعدة للبحث في البيانات (كما هي)
 # ============================================================================
 def get_criterion_by_id(criterion_id: str):
     for criterion in ALL_CRITERIA:
@@ -435,7 +451,7 @@ def get_reports_by_role(role: str):
         return TEACHER_REPORTS
 
 # ============================================================================
-# المسارات (Routes) – تبقى كما هي دون تغيير
+# المسارات (Routes)
 # ============================================================================
 
 @app.get("/")
@@ -683,7 +699,7 @@ def generate_report_content(
             report_name=title,
             subcategory_name="عام",
             criterion_name="عام",
-            criterion_percentage="",          # <-- تمت الإضافة (قيمة افتراضية)
+            criterion_percentage="",
             report_data=req.report_data,
         )
 
@@ -735,14 +751,14 @@ def generate_report_content(
     if subcategory["criterion_id"] != req.criterion_id:
         raise HTTPException(status_code=400, detail="Subcategory does not belong to this criterion")
 
-    criterion_percentage = criterion.get("percentage", "")   # <-- تم التعديل: استخراج النسبة
+    criterion_percentage = criterion.get("percentage", "")
 
     prompt = build_ai_prompt(
         role=req.role,
         report_name=report["name"],
         subcategory_name=subcategory["name"],
         criterion_name=criterion["name"],
-        criterion_percentage=criterion_percentage,            # <-- تمت الإضافة
+        criterion_percentage=criterion_percentage,
         report_data=req.report_data,
     )
 
