@@ -295,7 +295,7 @@ EDUCATIONAL_TOOLS = [
 ]
 
 # ============================================================================
-# برومبتات الذكاء الاصطناعي
+# برومبتات الذكاء الاصطناعي (نسخة واحدة معدلة)
 # ============================================================================
 
 def build_ai_prompt(
@@ -326,7 +326,6 @@ def build_ai_prompt(
         "kindergarten_teacher": KG_PROMPT_TEMPLATE,
         "lab_preparer": LAB_PROMPT_TEMPLATE,
         "school_principal": PRINCIPAL_PROMPT_TEMPLATE,
-        # educational_supervisor يتم التعامل معه بشكل منفصل أسفل
     }
 
     # معالجة خاصة للمشرف التربوي: اختيار القالب بناءً على نوع التقرير
@@ -335,14 +334,32 @@ def build_ai_prompt(
         # قالب تحليلي
         if any(word in report_lower for word in ["تحليل", "مؤشر", "نتائج", "قياس", "اتجاهات"]):
             template = SUPERVISOR_ANALYTICAL_TEMPLATE
+            report_mode = "قيادي تربوي"
         # قالب مشروع / مبادرة
         elif any(word in report_lower for word in ["مبادرة", "مشروع", "برنامج", "تطبيق", "تنفيذ"]):
             template = SUPERVISOR_PROJECT_TEMPLATE
+            report_mode = "قيادي تربوي"
         # القالب الافتراضي (دعم إشرافي)
         else:
             template = SUPERVISOR_SUPPORT_TEMPLATE
-    else:
-        template = templates.get(role, TEACHER_PROMPT_TEMPLATE)
+            report_mode = "قيادي تربوي"
+
+        return template.format(
+            report_mode=report_mode,
+            report_name=report_name,
+            subcategory_name=subcategory_name,
+            criterion_name=criterion_name,
+            criterion_percentage=criterion_percentage,
+            subject_line=subject_line,
+            lesson_line=lesson_line,
+            grade_line=grade_line,
+            target_line=target_line,
+            place_line=place_line,
+            count_line=count_line,
+        )
+
+    # باقي الأدوار
+    template = templates.get(role, TEACHER_PROMPT_TEMPLATE)
 
     return template.format(
         report_name=report_name,
@@ -358,7 +375,7 @@ def build_ai_prompt(
     )
 
 # ============================================================================
-# دوال مساعدة للبحث في البيانات (كما هي)
+# دوال مساعدة للبحث في البيانات
 # ============================================================================
 def get_criterion_by_id(criterion_id: str):
     for criterion in ALL_CRITERIA:
