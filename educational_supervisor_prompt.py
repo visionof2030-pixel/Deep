@@ -5,14 +5,14 @@
 # ==========================================================
 
 SUPERVISOR_CRITERIA = [
-    {"id": "su_c1", "name": "المسؤولية (15%)", "order": 1, "percentage": 15},
-    {"id": "su_c2", "name": "العمل الجماعي (10%)", "order": 2, "percentage": 10},
-    {"id": "su_c3", "name": "المرونة والتكيف مع التغيير (10%)", "order": 3, "percentage": 10},
-    {"id": "su_c4", "name": "المبادرة (10%)", "order": 4, "percentage": 10},
-    {"id": "su_c5", "name": "قيادة التغيير (20%)", "order": 5, "percentage": 20},
-    {"id": "su_c6", "name": "تطوير وتمكين العاملين (10%)", "order": 6, "percentage": 10},
-    {"id": "su_c7", "name": "التوجه الاستراتيجي (10%)", "order": 7, "percentage": 10},
-    {"id": "su_c8", "name": "اتخاذ القرارات (15%)", "order": 8, "percentage": 15}
+    {"id": "su_c1", "name": "المسؤولية", "order": 1, "weight": 15},
+    {"id": "su_c2", "name": "العمل الجماعي", "order": 2, "weight": 10},
+    {"id": "su_c3", "name": "المرونة والتكيف مع التغيير", "order": 3, "weight": 10},
+    {"id": "su_c4", "name": "المبادرة", "order": 4, "weight": 10},
+    {"id": "su_c5", "name": "قيادة التغيير", "order": 5, "weight": 20},
+    {"id": "su_c6", "name": "تطوير وتمكين العاملين", "order": 6, "weight": 10},
+    {"id": "su_c7", "name": "التوجه الاستراتيجي", "order": 7, "weight": 10},
+    {"id": "su_c8", "name": "اتخاذ القرارات", "order": 8, "weight": 15}
 ]
 
 # ==========================================================
