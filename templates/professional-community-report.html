@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تقرير التفاعل مع المجتمع المهني</title>
+    <style>
+        body { font-family: 'Cairo', sans-serif; padding: 20px; background: #f9fcfb; }
+        h2 { color: #044a35; border-bottom: 2px solid #ffd166; padding-bottom: 5px; margin-top: 30px; }
+        div { margin: 10px 0; padding: 15px; background: #ffffff; border-radius: 8px; border: 1px solid #d4ebe2; }
+        .container { max-width: 800px; margin: auto; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 style="color:#044a35; text-align:center;">تقرير التفاعل مع المجتمع المهني</h1>
+
+    <h2>تعزيز الشراكة المهنية</h2>
+    <div id="partnership"></div>
+
+    <h2>المشاركة المهنية</h2>
+    <div id="participation"></div>
+
+    <h2>تبادل الخبرات</h2>
+    <div id="experience_exchange"></div>
+
+    <h2>المبادرات المشتركة</h2>
+    <div id="initiatives"></div>
+
+    <h2>دعم الزملاء</h2>
+    <div id="peer_support"></div>
+
+    <h2>أثر الشراكة</h2>
+    <div id="impact"></div>
+
+    <h2>فرص التحسين</h2>
+    <div id="improvement_opportunities"></div>
+</div>
+
+<script>
+    (function() {
+        const dataStr = localStorage.getItem("reportData");
+        if (!dataStr) return;
+        try {
+            const data = JSON.parse(dataStr);
+            for (const key in data) {
+                const el = document.getElementById(key);
+                if (el) el.innerText = data[key] || "غير متوفر";
+            }
+        } catch (e) {}
+    })();
+</script>
+</body>
+</html>
