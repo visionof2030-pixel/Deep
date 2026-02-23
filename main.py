@@ -1,14 +1,13 @@
-# -*- coding: utf-8 -*-
+# main.py (بعد التعديلات النهائية)
+
 from fastapi import FastAPI, HTTPException, Depends, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from pathlib import Path
 from datetime import datetime
 import os
 import itertools
-import json
 from typing import Optional, Dict, Any
 
 import google.generativeai as genai
@@ -48,6 +47,8 @@ from activity_leader_prompt import (
     AL_REPORTS,
     ACTIVITY_LEADER_PROMPT_TEMPLATE,
 )
+
+# استيراد بيانات الأدوار الجديدة
 from kindergarten_teacher_prompt import (
     KG_CRITERIA,
     KG_SUBCATEGORIES,
@@ -88,9 +89,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# خدمة الملفات الثابتة (للـ templates)
-app.mount("/templates", StaticFiles(directory="templates"), name="templates")
 
 # ---------- Admin Auth ----------
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
@@ -146,7 +144,7 @@ def get_api_key():
     return next(key_cycle)
 
 # ============================================================================
-# الأدوار المتاحة
+# الأدوار المتاحة (بما في ذلك الأدوار الجديدة)
 # ============================================================================
 ROLES = [
     {"id": "teacher", "name": "معلم"},
@@ -297,7 +295,7 @@ EDUCATIONAL_TOOLS = [
 ]
 
 # ============================================================================
-# برومبتات الذكاء الاصطناعي (نسخة JSON منظمة)
+# برومبتات الذكاء الاصطناعي (نسخة واحدة معدلة)
 # ============================================================================
 
 def build_ai_prompt(
@@ -308,81 +306,73 @@ def build_ai_prompt(
     criterion_percentage: str = "",
     report_data: dict = None,
 ):
+    """بناء البرومت المناسب للذكاء الاصطناعي بناءً على الدور"""
     if not report_data:
         report_data = {}
 
-    subject_line = f"المادة: {report_data.get('subject', '')}"
-    lesson_line = f"الدرس: {report_data.get('lesson', '')}"
-    grade_line = f"الصف: {report_data.get('grade', '')}"
-    target_line = f"المستهدفون: {report_data.get('target', '')}"
-    place_line = f"مكان التنفيذ: {report_data.get('place', '')}"
-    count_line = f"عدد الحضور: {report_data.get('count', '')}"
+    subject_line = f"المادة: {report_data.get('subject', '')}" if report_data.get("subject") else ""
+    lesson_line = f"الدرس: {report_data.get('lesson', '')}" if report_data.get("lesson") else ""
+    grade_line = f"الصف: {report_data.get('grade', '')}" if report_data.get("grade") else ""
+    target_line = f"المستهدفون: {report_data.get('target', '')}" if report_data.get("target") else ""
+    place_line = f"مكان التنفيذ: {report_data.get('place', '')}" if report_data.get("place") else ""
+    count_line = f"عدد الحضور: {report_data.get('count', '')}" if report_data.get("count") else ""
 
-    json_structure = ""
+    templates = {
+        "teacher": TEACHER_PROMPT_TEMPLATE,
+        "vice_principal": VICE_PRINCIPAL_PROMPT_TEMPLATE,
+        "student_guide": STUDENT_GUIDE_PROMPT_TEMPLATE,
+        "health_guide": HEALTH_GUIDE_PROMPT_TEMPLATE,
+        "activity_leader": ACTIVITY_LEADER_PROMPT_TEMPLATE,
+        "kindergarten_teacher": KG_PROMPT_TEMPLATE,
+        "lab_preparer": LAB_PROMPT_TEMPLATE,
+        "school_principal": PRINCIPAL_PROMPT_TEMPLATE,
+    }
 
-    if "أداء الواجبات" in report_name:
-        json_structure = """
-أعد النتيجة بصيغة JSON فقط:
+    # معالجة خاصة للمشرف التربوي: اختيار القالب بناءً على نوع التقرير
+    if role == "educational_supervisor":
+        report_lower = report_name.lower()
+        # قالب تحليلي
+        if any(word in report_lower for word in ["تحليل", "مؤشر", "نتائج", "قياس", "اتجاهات"]):
+            template = SUPERVISOR_ANALYTICAL_TEMPLATE
+            report_mode = "قيادي تربوي"
+        # قالب مشروع / مبادرة
+        elif any(word in report_lower for word in ["مبادرة", "مشروع", "برنامج", "تطبيق", "تنفيذ"]):
+            template = SUPERVISOR_PROJECT_TEMPLATE
+            report_mode = "قيادي تربوي"
+        # القالب الافتراضي (دعم إشرافي)
+        else:
+            template = SUPERVISOR_SUPPORT_TEMPLATE
+            report_mode = "قيادي تربوي"
 
-{
-  "goal": "",
-  "procedures": "",
-  "application_level": "",
-  "impact": "",
-  "obstacles": "",
-  "development_actions": "",
-  "follow_up": ""
-}
-"""
+        return template.format(
+            report_mode=report_mode,
+            report_name=report_name,
+            subcategory_name=subcategory_name,
+            criterion_name=criterion_name,
+            criterion_percentage=criterion_percentage,
+            subject_line=subject_line,
+            lesson_line=lesson_line,
+            grade_line=grade_line,
+            target_line=target_line,
+            place_line=place_line,
+            count_line=count_line,
+        )
 
-    elif "المجتمع المهني" in report_name:
-        json_structure = """
-أعد النتيجة بصيغة JSON فقط:
+    # باقي الأدوار
+    template = templates.get(role, TEACHER_PROMPT_TEMPLATE)
 
-{
-  "partnership": "",
-  "participation": "",
-  "experience_exchange": "",
-  "initiatives": "",
-  "peer_support": "",
-  "impact": "",
-  "improvement_opportunities": ""
-}
-"""
-
-    elif "أولياء الأمور" in report_name:
-        json_structure = """
-أعد النتيجة بصيغة JSON فقط:
-
-{
-  "goals": "",
-  "communication_methods": "",
-  "participation_level": "",
-  "family_partnerships": "",
-  "impact": "",
-  "challenges": "",
-  "improvement_opportunities": ""
-}
-"""
-
-    final_prompt = f"""
-التقرير المطلوب: {report_name}
-يندرج تحت: {subcategory_name}
-ضمن الجدارة: {criterion_name}
-
-{subject_line}
-{lesson_line}
-{grade_line}
-{target_line}
-{place_line}
-{count_line}
-
-⚠️ أعد JSON فقط بدون شرح أو تنسيق.
-
-{json_structure}
-"""
-
-    return final_prompt
+    return template.format(
+        report_name=report_name,
+        subcategory_name=subcategory_name,
+        criterion_name=criterion_name,
+        criterion_percentage=criterion_percentage,
+        subject_line=subject_line,
+        lesson_line=lesson_line,
+        grade_line=grade_line,
+        target_line=target_line,
+        place_line=place_line,
+        count_line=count_line,
+    )
 
 # ============================================================================
 # دوال مساعدة للبحث في البيانات
@@ -708,7 +698,7 @@ def search_reports(q: str = Query(..., min_length=2), role: Optional[str] = None
 
     return {"results": results[:20]}
 
-# ---------- مسار توليد محتوى التقرير (المعدل) ----------
+# ---------- مسار توليد محتوى التقرير ----------
 @app.post("/api/generate-report-content")
 def generate_report_content(
     req: GenerateReportRequest,
@@ -717,7 +707,10 @@ def generate_report_content(
 
     # ===== الوضع الحر بجودة احترافية =====
     if not req.criterion_id or not req.subcategory_id or not req.report_id:
+
         title = req.report_data.get("title", "تقرير مدرسي")
+
+        # استخدام نفس قالب الأدوار الاحترافي
         prompt = build_ai_prompt(
             role=req.role,
             report_name=title,
@@ -726,39 +719,39 @@ def generate_report_content(
             criterion_percentage="",
             report_data=req.report_data,
         )
+
         try:
             genai.configure(api_key=get_api_key())
             model = genai.GenerativeModel("models/gemini-2.5-flash-lite")
             response = model.generate_content(prompt)
             content = response.text
+
+            # تنظيف أي رموز Markdown غير مرغوبة وإزالة الأقواس المربعة
+            content = (
+                content.replace("**", "")
+                       .replace("*", "")
+                       .replace("##", "")
+                       .replace("#", "")
+                       .replace("`", "")
+                       .replace("-", "")
+                       .replace("[", "")   # إزالة الأقواس المربعة المفتوحة
+                       .replace("]", "")   # إزالة الأقواس المربعة المغلقة
+            )
+
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"فشل توليد المحتوى: {str(e)}")
 
-        # محاولة تحليل JSON
-        try:
-            structured_content = json.loads(content)
-        except Exception:
-            structured_content = {
-                "error": "فشل تحليل JSON",
-                "raw": content
-            }
-
-        if not isinstance(structured_content, dict):
-            structured_content = {"error": "تنسيق غير صحيح من الذكاء الاصطناعي"}
-
-        template_name = "duty-report" if "أداء الواجبات" in title else \
-                        "professional-community-report" if "المجتمع المهني" in title else \
-                        "parents-interaction-report" if "أولياء الأمور" in title else \
-                        "default-report"
-
         return {
-            "data": structured_content,
-            "template": template_name,
+            "content": content,
+            "report_id": None,
             "report_name": title,
+            "subcategory_name": None,
+            "criterion_name": None,
             "generated_at": datetime.utcnow().isoformat(),
         }
 
     # ===== الوضع المرتبط بالمعايير =====
+
     report = get_report_by_id(req.report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
@@ -777,7 +770,7 @@ def generate_report_content(
     if subcategory["criterion_id"] != req.criterion_id:
         raise HTTPException(status_code=400, detail="Subcategory does not belong to this criterion")
 
-    criterion_percentage = criterion.get("weight", "")
+    criterion_percentage = criterion.get("percentage", "")
 
     prompt = build_ai_prompt(
         role=req.role,
@@ -793,30 +786,28 @@ def generate_report_content(
         model = genai.GenerativeModel("models/gemini-2.5-flash-lite")
         response = model.generate_content(prompt)
         content = response.text
+
+        # تنظيف أي رموز Markdown غير مرغوبة وإزالة الأقواس المربعة
+        content = (
+            content.replace("**", "")
+                   .replace("*", "")
+                   .replace("##", "")
+                   .replace("#", "")
+                   .replace("`", "")
+                   .replace("-", "")
+                   .replace("[", "")   # إزالة الأقواس المربعة المفتوحة
+                   .replace("]", "")   # إزالة الأقواس المربعة المغلقة
+        )
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"فشل توليد المحتوى: {str(e)}")
 
-    try:
-        structured_content = json.loads(content)
-    except Exception:
-        structured_content = {
-            "error": "فشل تحليل JSON",
-            "raw": content
-        }
-
-    if not isinstance(structured_content, dict):
-        structured_content = {"error": "تنسيق غير صحيح من الذكاء الاصطناعي"}
-
-    # تحديد القالب
-    template_name = "duty-report" if "أداء الواجبات" in report["name"] else \
-                    "professional-community-report" if "المجتمع المهني" in report["name"] else \
-                    "parents-interaction-report" if "أولياء الأمور" in report["name"] else \
-                    "default-report"
-
     return {
-        "data": structured_content,
-        "template": template_name,
+        "content": content,
+        "report_id": req.report_id,
         "report_name": report["name"],
+        "subcategory_name": subcategory["name"],
+        "criterion_name": criterion["name"],
         "generated_at": datetime.utcnow().isoformat(),
     }
 
