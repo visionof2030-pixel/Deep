@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تقرير أداء الواجبات الوظيفية</title>
+    <style>
+        body { font-family: 'Cairo', sans-serif; padding: 20px; background: #f9fcfb; }
+        h2 { color: #044a35; border-bottom: 2px solid #ffd166; padding-bottom: 5px; margin-top: 30px; }
+        div { margin: 10px 0; padding: 15px; background: #ffffff; border-radius: 8px; border: 1px solid #d4ebe2; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .container { max-width: 800px; margin: auto; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 style="color:#044a35; text-align:center;">تقرير أداء الواجبات الوظيفية</h1>
+
+    <h2>الهدف</h2>
+    <div id="goal"></div>
+
+    <h2>الإجراءات</h2>
+    <div id="procedures"></div>
+
+    <h2>مستوى التطبيق</h2>
+    <div id="application_level"></div>
+
+    <h2>أثر التطبيق</h2>
+    <div id="impact"></div>
+
+    <h2>المعوقات</h2>
+    <div id="obstacles"></div>
+
+    <h2>إجراءات التطوير</h2>
+    <div id="development_actions"></div>
+
+    <h2>المتابعة</h2>
+    <div id="follow_up"></div>
+</div>
+
+<script>
+    (function() {
+        const dataStr = localStorage.getItem("reportData");
+        if (!dataStr) {
+            document.body.innerHTML += '<p style="color:red; text-align:center;">لا توجد بيانات متاحة.</p>';
+            return;
+        }
+        try {
+            const data = JSON.parse(dataStr);
+            for (const key in data) {
+                const el = document.getElementById(key);
+                if (el) el.innerText = data[key] || "غير متوفر";
+            }
+        } catch (e) {
+            document.body.innerHTML += '<p style="color:red; text-align:center;">خطأ في قراءة البيانات.</p>';
+        }
+    })();
+</script>
+</body>
+</html>
