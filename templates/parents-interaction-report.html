@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تقرير التفاعل مع أولياء الأمور</title>
+    <style>
+        body { font-family: 'Cairo', sans-serif; padding: 20px; background: #f9fcfb; }
+        h2 { color: #044a35; border-bottom: 2px solid #ffd166; padding-bottom: 5px; margin-top: 30px; }
+        div { margin: 10px 0; padding: 15px; background: #ffffff; border-radius: 8px; border: 1px solid #d4ebe2; }
+        .container { max-width: 800px; margin: auto; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 style="color:#044a35; text-align:center;">تقرير التفاعل مع أولياء الأمور</h1>
+
+    <h2>الأهداف</h2>
+    <div id="goals"></div>
+
+    <h2>آليات التواصل</h2>
+    <div id="communication_methods"></div>
+
+    <h2>مستوى المشاركة</h2>
+    <div id="participation_level"></div>
+
+    <h2>الشراكات الأسرية</h2>
+    <div id="family_partnerships"></div>
+
+    <h2>أثر الشراكة</h2>
+    <div id="impact"></div>
+
+    <h2>التحديات</h2>
+    <div id="challenges"></div>
+
+    <h2>فرص التحسين</h2>
+    <div id="improvement_opportunities"></div>
+</div>
+
+<script>
+    (function() {
+        const dataStr = localStorage.getItem("reportData");
+        if (!dataStr) return;
+        try {
+            const data = JSON.parse(dataStr);
+            for (const key in data) {
+                const el = document.getElementById(key);
+                if (el) el.innerText = data[key] || "غير متوفر";
+            }
+        } catch (e) {}
+    })();
+</script>
+</body>
+</html>
