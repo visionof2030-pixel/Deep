@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تقرير عام</title>
+    <style>
+        body { font-family: 'Cairo', sans-serif; padding: 20px; background: #f9fcfb; }
+        h2 { color: #044a35; border-bottom: 2px solid #ffd166; padding-bottom: 5px; margin-top: 30px; }
+        div { margin: 10px 0; padding: 15px; background: #ffffff; border-radius: 8px; border: 1px solid #d4ebe2; }
+        .container { max-width: 800px; margin: auto; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 style="color:#044a35; text-align:center;">تقرير تربوي</h1>
+
+    <h2>الهدف التربوي</h2>
+    <div id="goal"></div>
+
+    <h2>نبذة مختصرة</h2>
+    <div id="summary"></div>
+
+    <h2>إجراءات التنفيذ</h2>
+    <div id="steps"></div>
+
+    <h2>الاستراتيجيات المستخدمة</h2>
+    <div id="strategies"></div>
+
+    <h2>نقاط القوة</h2>
+    <div id="strengths"></div>
+
+    <h2>نقاط التحسين</h2>
+    <div id="improve"></div>
+
+    <h2>التوصيات</h2>
+    <div id="recomm"></div>
+</div>
+
+<script>
+    (function() {
+        const dataStr = localStorage.getItem("reportData");
+        if (!dataStr) return;
+        try {
+            const data = JSON.parse(dataStr);
+            for (const key in data) {
+                const el = document.getElementById(key);
+                if (el) el.innerText = data[key] || "غير متوفر";
+            }
+        } catch (e) {}
+    })();
+</script>
+</body>
+</html>
