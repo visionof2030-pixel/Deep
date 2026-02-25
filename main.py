@@ -295,7 +295,7 @@ EDUCATIONAL_TOOLS = [
 ]
 
 # ============================================================================
-# برومبتات الذكاء الاصطناعي (نسخة واحدة معدلة)
+# برومبتات الذكاء الاصطناعي (نسخة واحدة معدلة مع إضافة الحقول field, initiative, duration)
 # ============================================================================
 
 def build_ai_prompt(
@@ -306,7 +306,7 @@ def build_ai_prompt(
     criterion_percentage: str = "",
     report_data: dict = None,
 ):
-    """بناء البرومت المناسب للذكاء الاصطناعي بناءً على الدور"""
+    """بناء البرومت المناسب للذكاء الاصطناعي بناءً على الدور، مع دعم الحقول الإضافية"""
     if not report_data:
         report_data = {}
 
@@ -316,6 +316,11 @@ def build_ai_prompt(
     target_line = f"المستهدفون: {report_data.get('target', '')}" if report_data.get("target") else ""
     place_line = f"مكان التنفيذ: {report_data.get('place', '')}" if report_data.get("place") else ""
     count_line = f"عدد الحضور: {report_data.get('count', '')}" if report_data.get("count") else ""
+
+    # الحقول الإضافية
+    field = report_data.get("field", "")
+    initiative = report_data.get("initiative", "")
+    duration = report_data.get("duration", "")
 
     templates = {
         "teacher": TEACHER_PROMPT_TEMPLATE,
@@ -356,6 +361,9 @@ def build_ai_prompt(
             target_line=target_line,
             place_line=place_line,
             count_line=count_line,
+            field=field,
+            initiative=initiative,
+            duration=duration,
         )
 
     # باقي الأدوار
@@ -372,6 +380,9 @@ def build_ai_prompt(
         target_line=target_line,
         place_line=place_line,
         count_line=count_line,
+        field=field,
+        initiative=initiative,
+        duration=duration,
     )
 
 # ============================================================================
@@ -734,8 +745,8 @@ def generate_report_content(
                        .replace("#", "")
                        .replace("`", "")
                        .replace("-", "")
-                       .replace("[", "")   # إزالة الأقواس المربعة المفتوحة
-                       .replace("]", "")   # إزالة الأقواس المربعة المغلقة
+                       .replace("[", "")
+                       .replace("]", "")
             )
 
         except Exception as e:
@@ -795,8 +806,8 @@ def generate_report_content(
                    .replace("#", "")
                    .replace("`", "")
                    .replace("-", "")
-                   .replace("[", "")   # إزالة الأقواس المربعة المفتوحة
-                   .replace("]", "")   # إزالة الأقواس المربعة المغلقة
+                   .replace("[", "")
+                   .replace("]", "")
         )
 
     except Exception as e:
