@@ -734,19 +734,22 @@ def generate_report_content(
         try:
             genai.configure(api_key=get_api_key())
             model = genai.GenerativeModel("models/gemini-2.5-flash-lite")
-            response = model.generate_content(prompt)
+            response = model.generate_content(
+                prompt,
+                generation_config={
+                    "temperature": 0.4,
+                    "max_output_tokens": 2048
+                }
+            )
             content = response.text
 
-            # تنظيف أي رموز Markdown غير مرغوبة وإزالة الأقواس المربعة
+            # تنظيف أي رموز Markdown غير مرغوبة مع الاحتفاظ بالشرطات والأقواس المربعة
             content = (
                 content.replace("**", "")
                        .replace("*", "")
                        .replace("##", "")
                        .replace("#", "")
                        .replace("`", "")
-                       .replace("-", "")
-                       .replace("[", "")
-                       .replace("]", "")
             )
 
         except Exception as e:
@@ -781,7 +784,8 @@ def generate_report_content(
     if subcategory["criterion_id"] != req.criterion_id:
         raise HTTPException(status_code=400, detail="Subcategory does not belong to this criterion")
 
-    criterion_percentage = criterion.get("percentage", "")
+    # تعديل: استخدام weight بدلاً من percentage مع إضافة علامة %
+    criterion_percentage = f"{criterion.get('weight', '')}%"
 
     prompt = build_ai_prompt(
         role=req.role,
@@ -795,19 +799,22 @@ def generate_report_content(
     try:
         genai.configure(api_key=get_api_key())
         model = genai.GenerativeModel("models/gemini-2.5-flash-lite")
-        response = model.generate_content(prompt)
+        response = model.generate_content(
+            prompt,
+            generation_config={
+                "temperature": 0.4,
+                "max_output_tokens": 2048
+            }
+        )
         content = response.text
 
-        # تنظيف أي رموز Markdown غير مرغوبة وإزالة الأقواس المربعة
+        # تنظيف أي رموز Markdown غير مرغوبة مع الاحتفاظ بالشرطات والأقواس المربعة
         content = (
             content.replace("**", "")
                    .replace("*", "")
                    .replace("##", "")
                    .replace("#", "")
                    .replace("`", "")
-                   .replace("-", "")
-                   .replace("[", "")
-                   .replace("]", "")
         )
 
     except Exception as e:
