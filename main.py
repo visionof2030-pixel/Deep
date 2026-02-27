@@ -1,4 +1,4 @@
-# main.py (بعد التعديلات النهائية)
+# main.py (بعد التعديلات النهائية مع التحقق الإجباري)
 
 from fastapi import FastAPI, HTTPException, Depends, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -737,11 +737,25 @@ def generate_report_content(
             response = model.generate_content(
                 prompt,
                 generation_config={
-                    "temperature": 0.4,
-                    "max_output_tokens": 2048
+                    "temperature": 0.3,
+                    "max_output_tokens": 3072
                 }
             )
             content = response.text
+
+            # ===== التحقق الإجباري من وجود جميع الأقسام المطلوبة =====
+            required_sections = [
+                "[ الاهداف الاشرافية]",
+                "[الاجراءات]",
+                "[مستوى الاداء]",
+                "[جوانب التميز]",
+                "[مجالات التحسين]",
+                "[التوصيات]"
+            ]
+
+            for section in required_sections:
+                if section not in content:
+                    content += f"\n{section}\nيجب إدراج تحليل رقمي لا يقل عن 3 مؤشرات رقمية واضحة.\n"
 
             # ===== تقسيم المحتوى إلى أقسام =====
             sections = {}
@@ -815,11 +829,25 @@ def generate_report_content(
         response = model.generate_content(
             prompt,
             generation_config={
-                "temperature": 0.4,
-                "max_output_tokens": 2048
+                "temperature": 0.3,
+                "max_output_tokens": 3072
             }
         )
         content = response.text
+
+        # ===== التحقق الإجباري من وجود جميع الأقسام المطلوبة =====
+        required_sections = [
+            "[ الاهداف الاشرافية]",
+            "[الاجراءات]",
+            "[مستوى الاداء]",
+            "[جوانب التميز]",
+            "[مجالات التحسين]",
+            "[التوصيات]"
+        ]
+
+        for section in required_sections:
+            if section not in content:
+                content += f"\n{section}\nيجب إدراج تحليل رقمي لا يقل عن 3 مؤشرات رقمية واضحة.\n"
 
         # ===== تقسيم المحتوى إلى أقسام =====
         sections = {}
