@@ -743,8 +743,20 @@ def generate_report_content(
             )
             content = response.text
 
-            # تنظيف أي رموز Markdown غير مرغوبة مع الاحتفاظ بالشرطات والأقواس المربعة
-            content = (
+            # ===== تقسيم المحتوى إلى أقسام =====
+            sections = {}
+            current_section = None
+            lines = content.splitlines()
+            for line in lines:
+                clean_line = line.strip()
+                if clean_line.startswith("[") and clean_line.endswith("]"):
+                    current_section = clean_line
+                    sections[current_section] = ""
+                elif current_section:
+                    sections[current_section] += clean_line + "\n"
+
+            # تنظيف بسيط (إزالة علامات markdown الثقيلة مع الإبقاء على الأقواس)
+            content_clean = (
                 content.replace("**", "")
                        .replace("*", "")
                        .replace("##", "")
@@ -756,7 +768,8 @@ def generate_report_content(
             raise HTTPException(status_code=500, detail=f"فشل توليد المحتوى: {str(e)}")
 
         return {
-            "content": content,
+            "content": content_clean,
+            "sections": sections,  # الأقسام المفصولة
             "report_id": None,
             "report_name": title,
             "subcategory_name": None,
@@ -808,8 +821,20 @@ def generate_report_content(
         )
         content = response.text
 
-        # تنظيف أي رموز Markdown غير مرغوبة مع الاحتفاظ بالشرطات والأقواس المربعة
-        content = (
+        # ===== تقسيم المحتوى إلى أقسام =====
+        sections = {}
+        current_section = None
+        lines = content.splitlines()
+        for line in lines:
+            clean_line = line.strip()
+            if clean_line.startswith("[") and clean_line.endswith("]"):
+                current_section = clean_line
+                sections[current_section] = ""
+            elif current_section:
+                sections[current_section] += clean_line + "\n"
+
+        # تنظيف بسيط (إزالة علامات markdown الثقيلة مع الإبقاء على الأقواس)
+        content_clean = (
             content.replace("**", "")
                    .replace("*", "")
                    .replace("##", "")
@@ -821,7 +846,8 @@ def generate_report_content(
         raise HTTPException(status_code=500, detail=f"فشل توليد المحتوى: {str(e)}")
 
     return {
-        "content": content,
+        "content": content_clean,
+        "sections": sections,
         "report_id": req.report_id,
         "report_name": report["name"],
         "subcategory_name": subcategory["name"],
