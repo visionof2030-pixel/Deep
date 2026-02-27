@@ -726,7 +726,7 @@ def generate_report_content(
             response = model.generate_content(prompt)
             content = response.text
 
-            # تنظيف أي رموز Markdown غير مرغوبة وإزالة الأقواس المربعة
+            # تنظيف خفيف: إزالة رموز Markdown فقط مع الحفاظ على الأقواس المربعة
             content = (
                 content.replace("**", "")
                        .replace("*", "")
@@ -734,8 +734,7 @@ def generate_report_content(
                        .replace("#", "")
                        .replace("`", "")
                        .replace("-", "")
-                       .replace("[", "")   # إزالة الأقواس المربعة المفتوحة
-                       .replace("]", "")   # إزالة الأقواس المربعة المغلقة
+                # تمت إزالة السطرين اللذين يزيلان الأقواس المربعة
             )
 
         except Exception as e:
@@ -787,7 +786,7 @@ def generate_report_content(
         response = model.generate_content(prompt)
         content = response.text
 
-        # تنظيف أي رموز Markdown غير مرغوبة وإزالة الأقواس المربعة
+        # تنظيف خفيف: إزالة رموز Markdown فقط مع الحفاظ على الأقواس المربعة
         content = (
             content.replace("**", "")
                    .replace("*", "")
@@ -795,8 +794,7 @@ def generate_report_content(
                    .replace("#", "")
                    .replace("`", "")
                    .replace("-", "")
-                   .replace("[", "")   # إزالة الأقواس المربعة المفتوحة
-                   .replace("]", "")   # إزالة الأقواس المربعة المغلقة
+            # تمت إزالة السطرين اللذين يزيلان الأقواس المربعة
         )
 
     except Exception as e:
