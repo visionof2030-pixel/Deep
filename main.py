@@ -1,24 +1,16 @@
-# main.py
-# الإصدار النهائي مع دعم JSON للمشرف التربوي وإنشاء PDF
+# main.py (بعد التعديلات النهائية)
 
 from fastapi import FastAPI, HTTPException, Depends, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from pathlib import Path
 from datetime import datetime
 import os
 import itertools
-import json
 from typing import Optional, Dict, Any
 
 import google.generativeai as genai
-
-# PDF generation
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.pagesizes import A4
-from io import BytesIO
 
 from database import init_db, get_connection
 from create_key import create_key
@@ -84,10 +76,10 @@ from educational_supervisor_prompt import (
     SUPERVISOR_SUPPORT_TEMPLATE,
 )
 
-# ---------- تهيئة قاعدة البيانات ----------
+# ---------- Init DB ----------
 init_db()
 
-# ---------- تطبيق FastAPI ----------
+# ---------- App ----------
 app = FastAPI()
 
 app.add_middleware(
@@ -98,14 +90,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------- مفتاح المشرف ----------
+# ---------- Admin Auth ----------
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
 
 def admin_auth(x_admin_token: str = Header(...)):
     if x_admin_token != ADMIN_TOKEN:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-# ---------- النماذج (Models) ----------
+# ---------- Models ----------
 class Req(BaseModel):
     prompt: str
 
@@ -119,7 +111,7 @@ class GenerateReportRequest(BaseModel):
     role: str = "teacher"
     report_data: Dict[str, Any] = {}
 
-# ---------- خطط الاشتراك ----------
+# ---------- Plans ----------
 PLANS = {
     "5min_1":   {"minutes": 5,    "usage": 1},
     "15min_2":  {"minutes": 15,   "usage": 2},
@@ -133,7 +125,7 @@ PLANS = {
     "5m_200":   {"days": 150,     "usage": 200},
 }
 
-# ---------- مفاتيح Gemini ----------
+# ---------- Gemini Keys ----------
 api_keys = [
     os.getenv("GEMINI_API_KEY_1"),
     os.getenv("GEMINI_API_KEY_2"),
@@ -152,7 +144,7 @@ def get_api_key():
     return next(key_cycle)
 
 # ============================================================================
-# الأدوار المتاحة
+# الأدوار المتاحة (بما في ذلك الأدوار الجديدة)
 # ============================================================================
 ROLES = [
     {"id": "teacher", "name": "معلم"},
@@ -203,9 +195,7 @@ ALL_REPORTS = (
     + SUPERVISOR_REPORTS
 )
 
-# ============================================================================
-# بيانات ثابتة (إدارات، مواد، صفوف، ...)
-# ============================================================================
+# إدارات التعليم (ثابتة)
 EDUCATION_OFFICES = [
     "الإدارة العامة للتعليم بمنطقة مكة المكرمة",
     "الإدارة العامة للتعليم بمنطقة الرياض",
@@ -225,6 +215,7 @@ EDUCATION_OFFICES = [
     "الإدارة العامة للتعليم بمحافظة جدة",
 ]
 
+# المواد الدراسية (ثابتة)
 SCHOOL_SUBJECTS = [
     "القرآن الكريم",
     "الدراسات الإسلامية",
@@ -241,6 +232,7 @@ SCHOOL_SUBJECTS = [
     "التربية المهنية",
 ]
 
+# الصفوف الدراسية (ثابتة)
 SCHOOL_GRADES = [
     "الصف الأول الابتدائي",
     "الصف الثاني الابتدائي",
@@ -256,6 +248,7 @@ SCHOOL_GRADES = [
     "الصف الثالث الثانوي",
 ]
 
+# المستهدفون (ثابتة)
 TARGET_AUDIENCES = [
     "الطلاب",
     "المعلمون",
@@ -268,6 +261,7 @@ TARGET_AUDIENCES = [
     "الطلاب المتعثرون",
 ]
 
+# أماكن التنفيذ (ثابتة)
 IMPLEMENTATION_PLACES = [
     "قاعة الدرس",
     "مصادر التعلم",
@@ -281,6 +275,7 @@ IMPLEMENTATION_PLACES = [
     "الملعب الرياضي",
 ]
 
+# الأدوات والوسائل التعليمية (ثابتة)
 EDUCATIONAL_TOOLS = [
     "سبورة",
     "سبورة ذكية",
@@ -300,8 +295,9 @@ EDUCATIONAL_TOOLS = [
 ]
 
 # ============================================================================
-# دالة بناء البرومبت (مع دعم JSON للمشرف التربوي)
+# برومبتات الذكاء الاصطناعي (نسخة واحدة معدلة)
 # ============================================================================
+
 def build_ai_prompt(
     role: str,
     report_name: str,
@@ -310,20 +306,17 @@ def build_ai_prompt(
     criterion_percentage: str = "",
     report_data: dict = None,
 ):
+    """بناء البرومت المناسب للذكاء الاصطناعي بناءً على الدور"""
     if not report_data:
         report_data = {}
 
-    subject_line = report_data.get("subject", "")
-    lesson_line = report_data.get("lesson", "")
-    grade_line = report_data.get("grade", "")
-    target_line = report_data.get("target", "")
-    place_line = report_data.get("place", "")
-    count_line = report_data.get("count", "")
-    field = report_data.get("field", "")
-    initiative = report_data.get("initiative", "")
-    duration = report_data.get("duration", "")
+    subject_line = f"المادة: {report_data.get('subject', '')}" if report_data.get("subject") else ""
+    lesson_line = f"الدرس: {report_data.get('lesson', '')}" if report_data.get("lesson") else ""
+    grade_line = f"الصف: {report_data.get('grade', '')}" if report_data.get("grade") else ""
+    target_line = f"المستهدفون: {report_data.get('target', '')}" if report_data.get("target") else ""
+    place_line = f"مكان التنفيذ: {report_data.get('place', '')}" if report_data.get("place") else ""
+    count_line = f"عدد الحضور: {report_data.get('count', '')}" if report_data.get("count") else ""
 
-    # قوالب الأدوار الأخرى (نصية)
     templates = {
         "teacher": TEACHER_PROMPT_TEMPLATE,
         "vice_principal": VICE_PRINCIPAL_PROMPT_TEMPLATE,
@@ -335,33 +328,39 @@ def build_ai_prompt(
         "school_principal": PRINCIPAL_PROMPT_TEMPLATE,
     }
 
-    # المشرف التربوي: استخدام قوالب JSON
+    # معالجة خاصة للمشرف التربوي: اختيار القالب بناءً على نوع التقرير
     if role == "educational_supervisor":
         report_lower = report_name.lower()
+        # قالب تحليلي
         if any(word in report_lower for word in ["تحليل", "مؤشر", "نتائج", "قياس", "اتجاهات"]):
             template = SUPERVISOR_ANALYTICAL_TEMPLATE
+            report_mode = "قيادي تربوي"
+        # قالب مشروع / مبادرة
         elif any(word in report_lower for word in ["مبادرة", "مشروع", "برنامج", "تطبيق", "تنفيذ"]):
             template = SUPERVISOR_PROJECT_TEMPLATE
+            report_mode = "قيادي تربوي"
+        # القالب الافتراضي (دعم إشرافي)
         else:
             template = SUPERVISOR_SUPPORT_TEMPLATE
+            report_mode = "قيادي تربوي"
 
         return template.format(
+            report_mode=report_mode,
             report_name=report_name,
             subcategory_name=subcategory_name,
             criterion_name=criterion_name,
             criterion_percentage=criterion_percentage,
             subject_line=subject_line,
+            lesson_line=lesson_line,
             grade_line=grade_line,
             target_line=target_line,
             place_line=place_line,
             count_line=count_line,
-            field=field,
-            initiative=initiative,
-            duration=duration,
         )
 
-    # باقي الأدوار (النصية)
+    # باقي الأدوار
     template = templates.get(role, TEACHER_PROMPT_TEMPLATE)
+
     return template.format(
         report_name=report_name,
         subcategory_name=subcategory_name,
@@ -373,30 +372,27 @@ def build_ai_prompt(
         target_line=target_line,
         place_line=place_line,
         count_line=count_line,
-        field=field,
-        initiative=initiative,
-        duration=duration,
     )
 
 # ============================================================================
-# دوال مساعدة للبحث
+# دوال مساعدة للبحث في البيانات
 # ============================================================================
 def get_criterion_by_id(criterion_id: str):
-    for c in ALL_CRITERIA:
-        if c["id"] == criterion_id:
-            return c
+    for criterion in ALL_CRITERIA:
+        if criterion["id"] == criterion_id:
+            return criterion
     return None
 
 def get_subcategory_by_id(subcategory_id: str):
-    for s in ALL_SUBCATEGORIES:
-        if s["id"] == subcategory_id:
-            return s
+    for subcategory in ALL_SUBCATEGORIES:
+        if subcategory["id"] == subcategory_id:
+            return subcategory
     return None
 
 def get_report_by_id(report_id: str):
-    for r in ALL_REPORTS:
-        if r["id"] == report_id:
-            return r
+    for report in ALL_REPORTS:
+        if report["id"] == report_id:
+            return report
     return None
 
 def get_subcategories_by_criterion(criterion_id: str):
@@ -472,8 +468,9 @@ def get_reports_by_role(role: str):
         return TEACHER_REPORTS
 
 # ============================================================================
-# المسارات العامة
+# المسارات (Routes)
 # ============================================================================
+
 @app.get("/")
 def root():
     return {"status": "running", "message": "Teacher Reports API"}
@@ -482,33 +479,48 @@ def root():
 def health(_: int = Depends(activation_required)):
     return {"status": "ok"}
 
+# ---------- مسارات الاشتراك ----------
 @app.get("/subscription/status")
 def subscription_status(code_id: int = Depends(activation_required)):
     conn = get_connection()
     cur = conn.cursor()
+
     cur.execute(
         """
-        SELECT started_at, expires_at, duration_minutes, duration_days, usage_limit, usage_count
-        FROM activation_codes WHERE id = ?
-        """,
+        SELECT
+            started_at,
+            expires_at,
+            duration_minutes,
+            duration_days,
+            usage_limit,
+            usage_count
+        FROM activation_codes
+        WHERE id = ?
+    """,
         (code_id,),
     )
     row = cur.fetchone()
     conn.close()
+
     if not row:
         raise HTTPException(status_code=404, detail="Subscription not found")
+
     (started_at, expires_at, duration_minutes, duration_days, usage_limit, usage_count) = row
+
     now = datetime.utcnow()
     expired = False
     remaining_seconds = None
+
     if expires_at:
         expiry = datetime.fromisoformat(expires_at)
         if expiry < now:
             expired = True
         else:
             remaining_seconds = int((expiry - now).total_seconds())
+
     if usage_limit is not None and usage_count >= usage_limit:
         expired = True
+
     return {
         "started_at": started_at,
         "expires_at": expires_at,
@@ -521,6 +533,7 @@ def subscription_status(code_id: int = Depends(activation_required)):
         "expired": expired,
     }
 
+# ---------- المسار الرئيسي للذكاء الاصطناعي ----------
 @app.post("/ask")
 def ask(req: Req, code_id: int = Depends(activation_required)):
     try:
@@ -530,26 +543,31 @@ def ask(req: Req, code_id: int = Depends(activation_required)):
         answer = response.text
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"فشل الاتصال بالذكاء الاصطناعي: {str(e)}")
+
     conn = get_connection()
     cur = conn.cursor()
+
     cur.execute(
         """
         UPDATE activation_codes
-        SET usage_count = usage_count + 1, last_used_at = ?
-        WHERE id = ? AND (usage_limit IS NULL OR usage_count < usage_limit)
-        """,
+        SET usage_count = usage_count + 1,
+            last_used_at = ?
+        WHERE id = ?
+        AND (usage_limit IS NULL OR usage_count < usage_limit)
+    """,
         (datetime.utcnow().isoformat(), code_id),
     )
+
     if cur.rowcount == 0:
         conn.close()
         raise HTTPException(status_code=403, detail="تم استهلاك جميع الاستخدامات المسموحة")
+
     conn.commit()
     conn.close()
+
     return {"answer": answer}
 
-# ============================================================================
-# مسارات البيانات (API)
-# ============================================================================
+# ---------- مسارات البيانات ----------
 @app.get("/api/roles")
 def get_roles():
     return ROLES
@@ -571,6 +589,7 @@ def get_subcategories(criterion_id: str):
     criterion = get_criterion_by_id(criterion_id)
     if not criterion:
         raise HTTPException(status_code=404, detail="Criterion not found")
+
     subcategories = get_subcategories_by_criterion(criterion_id)
     return {"criterion": criterion, "subcategories": subcategories}
 
@@ -586,6 +605,7 @@ def get_reports(subcategory_id: str):
     subcategory = get_subcategory_by_id(subcategory_id)
     if not subcategory:
         raise HTTPException(status_code=404, detail="Subcategory not found")
+
     reports = get_reports_by_subcategory(subcategory_id)
     return {"subcategory": subcategory, "reports": reports}
 
@@ -594,8 +614,12 @@ def get_report(report_id: str):
     report = get_report_by_id(report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
+
     subcategory = get_subcategory_by_id(report["subcategory_id"])
-    criterion = get_criterion_by_id(subcategory["criterion_id"]) if subcategory else None
+    criterion = None
+    if subcategory:
+        criterion = get_criterion_by_id(subcategory["criterion_id"])
+
     return {"report": report, "subcategory": subcategory, "criterion": criterion}
 
 @app.get("/api/full-structure")
@@ -608,20 +632,24 @@ def get_full_structure(role: Optional[str] = None):
         criteria = ALL_CRITERIA
         subcategories = ALL_SUBCATEGORIES
         reports = ALL_REPORTS
+
     result = []
     for criterion in criteria:
         criterion_data = criterion.copy()
         criterion_subs = [s for s in subcategories if s["criterion_id"] == criterion["id"]]
         criterion_data["subcategories"] = []
+
         for sub in criterion_subs:
             sub_data = sub.copy()
             sub_reports = [r for r in reports if r["subcategory_id"] == sub["id"]]
             sub_data["reports"] = sub_reports
             criterion_data["subcategories"].append(sub_data)
+
         result.append(criterion_data)
+
     return {"structure": result, "role": role}
 
-# مسارات البيانات الإضافية
+# ---------- مسارات البيانات الإضافية ----------
 @app.get("/api/education-offices")
 def get_education_offices():
     return EDUCATION_OFFICES
@@ -650,29 +678,39 @@ def get_educational_tools():
 def search_reports(q: str = Query(..., min_length=2), role: Optional[str] = None):
     results = []
     q_lower = q.lower()
+
     reports_to_search = get_reports_by_role(role) if role else ALL_REPORTS
+
     for report in reports_to_search:
         if q_lower in report["name"].lower():
             subcategory = get_subcategory_by_id(report["subcategory_id"])
-            criterion = get_criterion_by_id(subcategory["criterion_id"]) if subcategory else None
-            results.append({
-                "report": report,
-                "subcategory_name": subcategory["name"] if subcategory else None,
-                "criterion_name": criterion["name"] if criterion else None,
-            })
+            criterion = None
+            if subcategory:
+                criterion = get_criterion_by_id(subcategory["criterion_id"])
+
+            results.append(
+                {
+                    "report": report,
+                    "subcategory_name": subcategory["name"] if subcategory else None,
+                    "criterion_name": criterion["name"] if criterion else None,
+                }
+            )
+
     return {"results": results[:20]}
 
-# ============================================================================
-# المسار الرئيسي لتوليد محتوى التقرير (مع دعم JSON)
-# ============================================================================
+# ---------- مسار توليد محتوى التقرير ----------
 @app.post("/api/generate-report-content")
 def generate_report_content(
     req: GenerateReportRequest,
     code_id: int = Depends(activation_required),
 ):
-    # ---------- الوضع الحر (بدون معايير) ----------
+
+    # ===== الوضع الحر بجودة احترافية =====
     if not req.criterion_id or not req.subcategory_id or not req.report_id:
+
         title = req.report_data.get("title", "تقرير مدرسي")
+
+        # استخدام نفس قالب الأدوار الاحترافي
         prompt = build_ai_prompt(
             role=req.role,
             report_name=title,
@@ -681,171 +719,113 @@ def generate_report_content(
             criterion_percentage="",
             report_data=req.report_data,
         )
+
         try:
             genai.configure(api_key=get_api_key())
             model = genai.GenerativeModel("models/gemini-2.5-flash-lite")
-            response = model.generate_content(
-                prompt,
-                generation_config={
-                    "temperature": 0.3,
-                    "max_output_tokens": 3072
-                }
-            )
+            response = model.generate_content(prompt)
             content = response.text
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"فشل توليد المحتوى: {str(e)}")
-    else:
-        # ---------- الوضع المرتبط بالمعايير ----------
-        report = get_report_by_id(req.report_id)
-        if not report:
-            raise HTTPException(status_code=404, detail="Report not found")
-        subcategory = get_subcategory_by_id(req.subcategory_id)
-        if not subcategory:
-            raise HTTPException(status_code=404, detail="Subcategory not found")
-        if report["subcategory_id"] != req.subcategory_id:
-            raise HTTPException(status_code=400, detail="Report does not belong to this subcategory")
-        criterion = get_criterion_by_id(req.criterion_id)
-        if not criterion:
-            raise HTTPException(status_code=404, detail="Criterion not found")
-        if subcategory["criterion_id"] != req.criterion_id:
-            raise HTTPException(status_code=400, detail="Subcategory does not belong to this criterion")
-        criterion_percentage = f"{criterion.get('weight', '')}%"
-        prompt = build_ai_prompt(
-            role=req.role,
-            report_name=report["name"],
-            subcategory_name=subcategory["name"],
-            criterion_name=criterion["name"],
-            criterion_percentage=criterion_percentage,
-            report_data=req.report_data,
-        )
-        try:
-            genai.configure(api_key=get_api_key())
-            model = genai.GenerativeModel("models/gemini-2.5-flash-lite")
-            response = model.generate_content(
-                prompt,
-                generation_config={
-                    "temperature": 0.3,
-                    "max_output_tokens": 3072
-                }
+
+            # تنظيف أي رموز Markdown غير مرغوبة وإزالة الأقواس المربعة
+            content = (
+                content.replace("**", "")
+                       .replace("*", "")
+                       .replace("##", "")
+                       .replace("#", "")
+                       .replace("`", "")
+                       .replace("-", "")
+                       .replace("[", "")   # إزالة الأقواس المربعة المفتوحة
+                       .replace("]", "")   # إزالة الأقواس المربعة المغلقة
             )
-            content = response.text
+
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"فشل توليد المحتوى: {str(e)}")
 
-    # ---------- معالجة الاستجابة: محاولة تحليل JSON أولاً ----------
-    sections = {}
+        return {
+            "content": content,
+            "report_id": None,
+            "report_name": title,
+            "subcategory_name": None,
+            "criterion_name": None,
+            "generated_at": datetime.utcnow().isoformat(),
+        }
+
+    # ===== الوضع المرتبط بالمعايير =====
+
+    report = get_report_by_id(req.report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    subcategory = get_subcategory_by_id(req.subcategory_id)
+    if not subcategory:
+        raise HTTPException(status_code=404, detail="Subcategory not found")
+
+    if report["subcategory_id"] != req.subcategory_id:
+        raise HTTPException(status_code=400, detail="Report does not belong to this subcategory")
+
+    criterion = get_criterion_by_id(req.criterion_id)
+    if not criterion:
+        raise HTTPException(status_code=404, detail="Criterion not found")
+
+    if subcategory["criterion_id"] != req.criterion_id:
+        raise HTTPException(status_code=400, detail="Subcategory does not belong to this criterion")
+
+    criterion_percentage = criterion.get("percentage", "")
+
+    prompt = build_ai_prompt(
+        role=req.role,
+        report_name=report["name"],
+        subcategory_name=subcategory["name"],
+        criterion_name=criterion["name"],
+        criterion_percentage=criterion_percentage,
+        report_data=req.report_data,
+    )
+
     try:
-        # تنظيف النص من علامات markdown إن وجدت
-        cleaned = content.strip()
-        if cleaned.startswith("```json"):
-            cleaned = cleaned[7:]
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
-        cleaned = cleaned.strip()
-        data = json.loads(cleaned)
-        # التأكد من وجود جميع الحقول المطلوبة (بالإنجليزية)
-        required_keys = ["goals", "procedures", "performance", "strengths", "improvements", "recommendations"]
-        if all(key in data for key in required_keys):
-            sections = {f"[{key}]": data[key] for key in required_keys}
-            # إعادة بناء النص الكامل للعرض (اختياري)
-            full_text = "\n\n".join([f"{k}\n{v}" for k, v in sections.items()])
-            content = full_text
-        else:
-            # إذا كان JSON ناقصاً، نستخدم الطريقة القديمة
-            raise ValueError("JSON missing required keys")
-    except Exception:
-        # ---------- الطريقة القديمة: تقسيم النص حسب العناوين ----------
-        sections = {}
-        current_section = None
-        lines = content.splitlines()
-        for line in lines:
-            clean_line = line.strip()
-            if clean_line.startswith("[") and clean_line.endswith("]"):
-                current_section = clean_line
-                sections[current_section] = ""
-            elif current_section:
-                sections[current_section] += clean_line + "\n"
+        genai.configure(api_key=get_api_key())
+        model = genai.GenerativeModel("models/gemini-2.5-flash-lite")
+        response = model.generate_content(prompt)
+        content = response.text
 
-    # تنظيف بسيط (إزالة ** و ## مع الإبقاء على الأقواس والشرطات)
-    content_clean = (
-        content.replace("**", "")
-               .replace("*", "")
-               .replace("##", "")
-               .replace("#", "")
-               .replace("`", "")
-    )
+        # تنظيف أي رموز Markdown غير مرغوبة وإزالة الأقواس المربعة
+        content = (
+            content.replace("**", "")
+                   .replace("*", "")
+                   .replace("##", "")
+                   .replace("#", "")
+                   .replace("`", "")
+                   .replace("-", "")
+                   .replace("[", "")   # إزالة الأقواس المربعة المفتوحة
+                   .replace("]", "")   # إزالة الأقواس المربعة المغلقة
+        )
 
-    # تحديث الاستخدام
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        UPDATE activation_codes
-        SET usage_count = usage_count + 1, last_used_at = ?
-        WHERE id = ? AND (usage_limit IS NULL OR usage_count < usage_limit)
-        """,
-        (datetime.utcnow().isoformat(), code_id),
-    )
-    if cur.rowcount == 0:
-        conn.close()
-        raise HTTPException(status_code=403, detail="تم استهلاك جميع الاستخدامات المسموحة")
-    conn.commit()
-    conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"فشل توليد المحتوى: {str(e)}")
 
     return {
-        "content": content_clean,
-        "sections": sections,
+        "content": content,
         "report_id": req.report_id,
-        "report_name": report["name"] if not req.report_id and 'report' in locals() else title if 'title' in locals() else None,
-        "subcategory_name": subcategory["name"] if not req.report_id and 'subcategory' in locals() else None,
-        "criterion_name": criterion["name"] if not req.report_id and 'criterion' in locals() else None,
+        "report_name": report["name"],
+        "subcategory_name": subcategory["name"],
+        "criterion_name": criterion["name"],
         "generated_at": datetime.utcnow().isoformat(),
     }
 
-# ============================================================================
-# مسار إنشاء PDF
-# ============================================================================
-@app.post("/api/generate-pdf")
-def generate_pdf(req: Req, code_id: int = Depends(activation_required)):
-    """
-    ينشئ ملف PDF من النص المرسل (req.prompt) ويعيده للتحميل.
-    """
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4)
-    elements = []
-    styles = getSampleStyleSheet()
-    
-    # تقسيم النص إلى فقرات (اختياري، يمكن تحسينه)
-    paragraphs = req.prompt.split('\n')
-    for para in paragraphs:
-        if para.strip():
-            elements.append(Paragraph(para, styles["Normal"]))
-            elements.append(Spacer(1, 12))
-    
-    doc.build(elements)
-    pdf = buffer.getvalue()
-    buffer.close()
-    
-    return Response(
-        content=pdf,
-        media_type="application/pdf",
-        headers={"Content-Disposition": "attachment; filename=report.pdf"},
-    )
-
-# ============================================================================
-# مسارات المشرف (Admin)
-# ============================================================================
+# ---------- Admin APIs ----------
 @app.post("/admin/generate", dependencies=[Depends(admin_auth)])
 def admin_generate(req: GenerateKeyReq):
     if req.plan not in PLANS:
         raise HTTPException(status_code=400, detail="Invalid plan")
+
     plan = PLANS[req.plan]
     duration_minutes = plan.get("minutes")
     duration_days = plan.get("days")
     usage_limit = plan["usage"]
+
     code = create_key(
         duration_minutes=duration_minutes, duration_days=duration_days, usage_limit=usage_limit
     )
+
     return {
         "code": code,
         "duration_minutes": duration_minutes,
@@ -859,37 +839,66 @@ def admin_codes():
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT id, code, is_active, created_at, started_at, expires_at,
-               duration_minutes, duration_days, usage_limit, usage_count, last_used_at
-        FROM activation_codes ORDER BY id DESC
-        """
+        SELECT
+            id,
+            code,
+            is_active,
+            created_at,
+            started_at,
+            expires_at,
+            duration_minutes,
+            duration_days,
+            usage_limit,
+            usage_count,
+            last_used_at
+        FROM activation_codes
+        ORDER BY id DESC
+    """
     )
     rows = cur.fetchall()
     conn.close()
+
     now = datetime.utcnow()
     result = []
+
     for r in rows:
-        (id, code, is_active, created_at, started_at, expires_at,
-         duration_minutes, duration_days, usage_limit, usage_count, last_used_at) = r
+        (
+            id,
+            code,
+            is_active,
+            created_at,
+            started_at,
+            expires_at,
+            duration_minutes,
+            duration_days,
+            usage_limit,
+            usage_count,
+            last_used_at,
+        ) = r
+
         expired = False
         if expires_at and datetime.fromisoformat(expires_at) < now:
             expired = True
         if usage_limit is not None and usage_count >= usage_limit:
             expired = True
-        result.append({
-            "id": id,
-            "code": code,
-            "is_active": bool(is_active),
-            "created_at": created_at,
-            "started_at": started_at,
-            "expires_at": expires_at,
-            "duration_minutes": duration_minutes,
-            "duration_days": duration_days,
-            "usage_limit": usage_limit,
-            "usage_count": usage_count,
-            "last_used_at": last_used_at,
-            "expired": expired,
-        })
+
+        result.append(
+            {
+                "id": id,
+                "code": code,
+                "is_active": bool(is_active),
+                "created_at": created_at,
+                "started_at": started_at,
+                "expires_at": expires_at,
+                "duration_minutes": duration_minutes,
+                "duration_days": duration_days,
+                "usage_limit": usage_limit,
+                "usage_count": usage_count,
+                "last_used_at": last_used_at,
+                "expired": expired,
+            }
+        )
+
     return result
 
 @app.put("/admin/code/{code_id}/toggle", dependencies=[Depends(admin_auth)])
@@ -897,7 +906,11 @@ def admin_toggle(code_id: int):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "UPDATE activation_codes SET is_active = CASE WHEN is_active=1 THEN 0 ELSE 1 END WHERE id = ?",
+        """
+        UPDATE activation_codes
+        SET is_active = CASE WHEN is_active=1 THEN 0 ELSE 1 END
+        WHERE id = ?
+    """,
         (code_id,),
     )
     conn.commit()
@@ -913,6 +926,7 @@ def admin_delete(code_id: int):
     conn.close()
     return {"status": "deleted"}
 
+# ---------- Admin Panel ----------
 @app.get("/admin/panel", response_class=HTMLResponse)
 def admin_panel():
     return Path("admin.html").read_text(encoding="utf-8")
