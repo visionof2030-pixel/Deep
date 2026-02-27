@@ -4,3 +4,4 @@ gunicorn
 pydantic
 google-generativeai
 python-dotenv
+reportlab
