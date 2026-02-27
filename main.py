@@ -1,9 +1,9 @@
 # main.py
-# الإصدار النهائي مع دعم JSON للمشرف التربوي
+# الإصدار النهائي مع دعم JSON للمشرف التربوي وإنشاء PDF
 
 from fastapi import FastAPI, HTTPException, Depends, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 from pathlib import Path
 from datetime import datetime
@@ -13,6 +13,12 @@ import json
 from typing import Optional, Dict, Any
 
 import google.generativeai as genai
+
+# PDF generation
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
+from io import BytesIO
 
 from database import init_db, get_connection
 from create_key import create_key
@@ -200,12 +206,98 @@ ALL_REPORTS = (
 # ============================================================================
 # بيانات ثابتة (إدارات، مواد، صفوف، ...)
 # ============================================================================
-EDUCATION_OFFICES = [ ... ]  # (كما هي)
-SCHOOL_SUBJECTS = [ ... ]     # (كما هي)
-SCHOOL_GRADES = [ ... ]       # (كما هي)
-TARGET_AUDIENCES = [ ... ]    # (كما هي)
-IMPLEMENTATION_PLACES = [ ... ]  # (كما هي)
-EDUCATIONAL_TOOLS = [ ... ]   # (كما هي)
+EDUCATION_OFFICES = [
+    "الإدارة العامة للتعليم بمنطقة مكة المكرمة",
+    "الإدارة العامة للتعليم بمنطقة الرياض",
+    "الإدارة العامة للتعليم بمنطقة المدينة المنورة",
+    "الإدارة العامة للتعليم بالمنطقة الشرقية",
+    "الإدارة العامة للتعليم بمنطقة القصيم",
+    "الإدارة العامة للتعليم بمنطقة عسير",
+    "الإدارة العامة للتعليم بمنطقة تبوك",
+    "الإدارة العامة للتعليم بمنطقة حائل",
+    "الإدارة العامة للتعليم بمنطقة الحدود الشمالية",
+    "الإدارة العامة للتعليم بمنطقة جازان",
+    "الإدارة العامة للتعليم بمنطقة نجران",
+    "الإدارة العامة للتعليم بمنطقة الباحة",
+    "الإدارة العامة للتعليم بمنطقة الجوف",
+    "الإدارة العامة للتعليم بمحافظة الأحساء",
+    "الإدارة العامة للتعليم بمحافظة الطائف",
+    "الإدارة العامة للتعليم بمحافظة جدة",
+]
+
+SCHOOL_SUBJECTS = [
+    "القرآن الكريم",
+    "الدراسات الإسلامية",
+    "اللغة العربية",
+    "الرياضيات",
+    "العلوم",
+    "الدراسات الاجتماعية",
+    "اللغة الإنجليزية",
+    "التربية الفنية",
+    "التربية البدنية",
+    "المهارات الرقمية",
+    "المهارات الحياتية والأسرية",
+    "التفكير الناقد",
+    "التربية المهنية",
+]
+
+SCHOOL_GRADES = [
+    "الصف الأول الابتدائي",
+    "الصف الثاني الابتدائي",
+    "الصف الثالث الابتدائي",
+    "الصف الرابع الابتدائي",
+    "الصف الخامس الابتدائي",
+    "الصف السادس الابتدائي",
+    "الصف الأول المتوسط",
+    "الصف الثاني المتوسط",
+    "الصف الثالث المتوسط",
+    "الصف الأول الثانوي",
+    "الصف الثاني الثانوي",
+    "الصف الثالث الثانوي",
+]
+
+TARGET_AUDIENCES = [
+    "الطلاب",
+    "المعلمون",
+    "أولياء الأمور",
+    "المجتمع المحلي",
+    "الإدارة المدرسية",
+    "الموهوبون",
+    "طلاب صعوبات التعلم",
+    "الطلاب المتفوقون",
+    "الطلاب المتعثرون",
+]
+
+IMPLEMENTATION_PLACES = [
+    "قاعة الدرس",
+    "مصادر التعلم",
+    "مختبر العلوم",
+    "معمل الحاسب",
+    "ساحة المدرسة",
+    "المكتبة",
+    "قاعة النشاط",
+    "المسرح المدرسي",
+    "الفصول الافتراضية",
+    "الملعب الرياضي",
+]
+
+EDUCATIONAL_TOOLS = [
+    "سبورة",
+    "سبورة ذكية",
+    "جهاز عرض",
+    "أوراق عمل",
+    "حاسب",
+    "عرض تقديمي",
+    "بطاقات تعليمية",
+    "صور توضيحية",
+    "كتاب",
+    "أدوات رياضية",
+    "جهاز لوحي",
+    "منصة مدرستي",
+    "نظام نور",
+    "تطبيقات تعليمية",
+    "فيديو تعليمي",
+]
 
 # ============================================================================
 # دالة بناء البرومبت (مع دعم JSON للمشرف التربوي)
@@ -704,11 +796,41 @@ def generate_report_content(
         "content": content_clean,
         "sections": sections,
         "report_id": req.report_id,
-        "report_name": report["name"] if not req.report_id else title if 'title' in locals() else None,
+        "report_name": report["name"] if not req.report_id and 'report' in locals() else title if 'title' in locals() else None,
         "subcategory_name": subcategory["name"] if not req.report_id and 'subcategory' in locals() else None,
         "criterion_name": criterion["name"] if not req.report_id and 'criterion' in locals() else None,
         "generated_at": datetime.utcnow().isoformat(),
     }
+
+# ============================================================================
+# مسار إنشاء PDF
+# ============================================================================
+@app.post("/api/generate-pdf")
+def generate_pdf(req: Req, code_id: int = Depends(activation_required)):
+    """
+    ينشئ ملف PDF من النص المرسل (req.prompt) ويعيده للتحميل.
+    """
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # تقسيم النص إلى فقرات (اختياري، يمكن تحسينه)
+    paragraphs = req.prompt.split('\n')
+    for para in paragraphs:
+        if para.strip():
+            elements.append(Paragraph(para, styles["Normal"]))
+            elements.append(Spacer(1, 12))
+    
+    doc.build(elements)
+    pdf = buffer.getvalue()
+    buffer.close()
+    
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=report.pdf"},
+    )
 
 # ============================================================================
 # مسارات المشرف (Admin)
