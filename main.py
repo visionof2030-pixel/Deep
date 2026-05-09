@@ -14,7 +14,7 @@ import google.generativeai as genai
 
 from database import init_db, get_connection
 from create_key import create_key
-from key_logic import activation_required
+from key_logic import activation_required, consume_usage  # تم التعديل هنا
 
 # استيراد بيانات الأدوار والبرومبتات
 from teacher_data import (
@@ -740,6 +740,8 @@ def generate_report_content(
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"فشل توليد المحتوى: {str(e)}")
 
+        consume_usage(code_id)  # ✅ خصم الاستخدام
+
         return {
             "content": content,
             "report_id": None,
@@ -799,6 +801,8 @@ def generate_report_content(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"فشل توليد المحتوى: {str(e)}")
+
+    consume_usage(code_id)  # ✅ خصم الاستخدام
 
     return {
         "content": content,
