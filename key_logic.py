@@ -1,17 +1,11 @@
+# key_logic.py
+
 from datetime import datetime, timedelta
 from fastapi import Header, HTTPException
 from database import get_connection
 
 
 def activation_required(x_activation_code: str = Header(...)):
-    """
-    التحقق من صلاحية كود التفعيل فقط.
-
-    ✅ يبدأ الوقت عند أول تسجيل دخول
-    ✅ يتحقق من انتهاء الوقت
-    ✅ يتحقق من عدد الاستخدامات
-    ❌ لا يخصم الاستخدام هنا
-    """
 
     conn = get_connection()
     cur = conn.cursor()
@@ -64,7 +58,7 @@ def activation_required(x_activation_code: str = Header(...)):
 
     now = datetime.utcnow()
 
-    # ✅ بدء الوقت عند أول تسجيل دخول فقط
+    # ✅ بدء الوقت عند أول دخول فقط
     if not started_at:
 
         delta = timedelta(
@@ -88,8 +82,6 @@ def activation_required(x_activation_code: str = Header(...)):
 
         conn.commit()
 
-        # تحديث القيم محليًا
-        started_at = now.isoformat()
         expires_at = new_expiry.isoformat()
 
     # ✅ التحقق من انتهاء الوقت
@@ -98,6 +90,7 @@ def activation_required(x_activation_code: str = Header(...)):
         expiry_date = datetime.fromisoformat(expires_at)
 
         if now > expiry_date:
+
             conn.close()
 
             raise HTTPException(
@@ -109,6 +102,7 @@ def activation_required(x_activation_code: str = Header(...)):
     if usage_limit is not None:
 
         if usage_count >= usage_limit:
+
             conn.close()
 
             raise HTTPException(
@@ -123,37 +117,18 @@ def activation_required(x_activation_code: str = Header(...)):
 
 
 def consume_usage(code_id):
-    """
-    خصم استخدام واحد بعد نجاح الطلب الحقيقي
-    """
 
     conn = get_connection()
     cur = conn.cursor()
 
-    # جلب العدد الحالي
-    cur.execute("""
-        SELECT usage_count
-        FROM activation_codes
-        WHERE id = ?
-    """, (code_id,))
-
-    row = cur.fetchone()
-
-    if not row:
-        conn.close()
-        return
-
-    current_usage = row[0] or 0
-
-    # تحديث عدد الاستخدامات
+    # خصم استخدام واحد
     cur.execute("""
         UPDATE activation_codes
         SET
-            usage_count = ?,
+            usage_count = usage_count + 1,
             last_used_at = ?
         WHERE id = ?
     """, (
-        current_usage + 1,
         datetime.utcnow().isoformat(),
         code_id
     ))
