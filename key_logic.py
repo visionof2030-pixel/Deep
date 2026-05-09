@@ -5,11 +5,12 @@ from database import get_connection
 
 def activation_required(x_activation_code: str = Header(...)):
     """
-    التحقق من صلاحية كود التفعيل.
-    - يبدأ الاشتراك عند أول استخدام فقط.
+    التحقق من صلاحية كود التفعيل فقط.
+    
+    - يبدأ الاشتراك عند أول استخدام.
     - يتم التحقق من انتهاء المدة.
     - يتم التحقق من عدد الاستخدامات.
-    - يتم خصم استخدام واحد بعد نجاح التحقق.
+    - لا يتم خصم الاستخدام هنا.
     """
 
     conn = get_connection()
@@ -47,6 +48,7 @@ def activation_required(x_activation_code: str = Header(...)):
     # التحقق من تفعيل الكود
     if not active:
         conn.close()
+
         raise HTTPException(
             status_code=403,
             detail="تم إيقاف الاشتراك"
@@ -54,7 +56,7 @@ def activation_required(x_activation_code: str = Header(...)):
 
     now = datetime.utcnow()
 
-    # ✅ بدء الاشتراك عند أول استخدام
+    # ✅ بدء الاشتراك عند أول استخدام فقط
     if not started_at:
 
         delta = timedelta(
@@ -98,19 +100,28 @@ def activation_required(x_activation_code: str = Header(...)):
             detail="تم استهلاك جميع الاستخدامات المسموحة"
         )
 
-    # ✅ تسجيل استخدام جديد
+    conn.close()
+
+    return code_id
+
+
+def consume_usage(code_id):
+    """
+    خصم استخدام واحد بعد نجاح الطلب الحقيقي
+    """
+
+    conn = get_connection()
+    cur = conn.cursor()
+
     cur.execute("""
         UPDATE activation_codes
         SET usage_count = usage_count + 1,
             last_used_at = ?
         WHERE id = ?
     """, (
-        now.isoformat(),
+        datetime.utcnow().isoformat(),
         code_id
     ))
 
     conn.commit()
-
     conn.close()
-
-    return code_id
